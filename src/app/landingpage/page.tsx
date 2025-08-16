@@ -51,12 +51,16 @@ export default function FoodieWebsite() {
                 Sink your teeth into the juiciest, most flavorful burgers in town. Freshly grilled, packed with premium ingredients, and served with love – every bite is a celebration of taste.
               </p>
               <div className="flex gap-4">
-                <Button className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-full text-lg">
-                  Order Now
-                </Button>
-                <Button variant="outline" className="border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white px-8 py-3 rounded-full text-lg">
-                  Explore Our Menu
-                </Button>
+                <Link href="/Cart">
+                  <Button className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-full text-lg">
+                    Order Now
+                  </Button>
+                </Link>
+                <Link href="/menu">
+                  <Button variant="outline" className="border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white px-8 py-3 rounded-full text-lg">
+                    Explore Our Menu
+                  </Button>
+                </Link>
               </div>
             </div>
             <div className="flex justify-center">
@@ -217,9 +221,11 @@ export default function FoodieWebsite() {
             <p className="text-orange-800 text-lg leading-relaxed mb-8">
               This sparks curiosity and appetite, making visitors want to click Read More. Do you want me to give you 2-3 more variations so you can choose the best one?
             </p>
-            <Button className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-full text-lg transition-transform duration-200 hover:scale-105">
-              Read More
-            </Button>
+            <Link href="/Aboutus">
+              <Button className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-full text-lg transition-transform duration-200 hover:scale-105">
+                Read More
+              </Button>
+            </Link>
           </div>
         </section>
 

@@ -176,9 +176,11 @@ export default function CartPage() {
               </div>
 
               {/* Check Out Button */}
+              <Link href="/payment">
               <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-lg transition-transform duration-200 hover:scale-105">
                 Check Out
               </Button>
+              </Link>
             </div>
           </div>
         </div>

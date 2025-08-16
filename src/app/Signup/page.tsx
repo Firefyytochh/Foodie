@@ -73,12 +73,19 @@ export default function LoginPage() {
               className="w-full px-6 py-4 text-lg bg-white/90 backdrop-blur-sm border-0 rounded-full shadow-lg placeholder:text-gray-500 focus:ring-2 focus:ring-orange-400"
             />
           </div>
+          <div>
+            <Input
+              type="password"
+              placeholder="Re Enter Password..."
+              className="w-full px-6 py-4 text-lg bg-white/90 backdrop-blur-sm border-0 rounded-full shadow-lg placeholder:text-gray-500 focus:ring-2 focus:ring-orange-400"
+            />
+          </div>
 
           <div className="flex justify-between items-center px-2 py-2">
             <div className="text-gray-700">
-              {"Don't have an account? "}
-              <Link href="/Signup">
-                <button className="text-orange-500 hover:text-orange-600 font-medium underline">Sign Up</button>
+              {"Already have an account? "}
+              <Link href="/login">
+                <button className="text-orange-500 hover:text-orange-600 font-medium underline">Sign in</button>
               </Link>
             </div>
             <button className="text-orange-500 hover:text-orange-600 font-medium underline">Forgot password</button>
