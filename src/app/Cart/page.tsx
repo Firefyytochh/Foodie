@@ -94,7 +94,7 @@ export default function CartPage() {
               <div className="col-span-2 text-center">Total</div>
               <div className="col-span-1"></div>
             </div>
-
+          
             {/* Cart Items */}
             <div className="space-y-4 ">
               {cartItems.map((item) => (

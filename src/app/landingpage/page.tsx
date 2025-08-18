@@ -52,18 +52,18 @@ export default function FoodieWebsite() {
               </p>
               <div className="flex gap-4">
                 <Link href="/Cart">
-                  <Button className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-full text-lg">
+                  <Button className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-full text-lg transition-transform duration-200 hover:scale-105">
                     Order Now
                   </Button>
                 </Link>
                 <Link href="/menu">
-                  <Button variant="outline" className="border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white px-8 py-3 rounded-full text-lg">
+                  <Button variant="outline" className="border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white px-8 py-3 rounded-full text-lg transition-transform duration-200 hover:scale-105">
                     Explore Our Menu
                   </Button>
                 </Link>
               </div>
             </div>
-            <div className="flex justify-center">
+            <div className="flex justify-center transition-transform duration-200 hover:scale-105">
               <Image
                 src="/burger1.jpg" // Place your burger image in the public folder
                 alt="Delicious burger"
@@ -170,7 +170,11 @@ export default function FoodieWebsite() {
                   <div className="bg-orange-600 text-white px-4 py-2 rounded-lg font-medium">Burger</div>
                   <div className="text-orange-800 px-4 py-2 hover:bg-orange-100 rounded-lg cursor-pointer">Drink</div>
                   <div className="text-orange-800 px-4 py-2 hover:bg-orange-100 rounded-lg cursor-pointer">Ice Cream</div>
-                  <div className="text-orange-800 px-4 py-2 hover:bg-orange-100 rounded-lg cursor-pointer">Reservation</div>
+                  <Link href="/Reservation">
+                    <div className="text-orange-800 px-4 py-2 hover:bg-orange-100 rounded-lg cursor-pointer">
+                      Reservation
+                    </div>
+                  </Link>
                 </div>
               </div>
 
@@ -197,7 +201,7 @@ export default function FoodieWebsite() {
                       <h4 className="font-bold text-center mb-2">{item.name}</h4>
                       <div className="flex items-center justify-between">
                         <span className="text-lg font-bold text-orange-600">{item.price}</span>
-                        <Badge className="bg-orange-600 text-white">Order</Badge>
+                        <Badge className="bg-orange-600 text-white">Add to cart</Badge>
                         <div className="flex items-center gap-1">
                           <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                           <span className="text-xs">{item.rating}</span>
@@ -240,7 +244,7 @@ export default function FoodieWebsite() {
                     alt="Our Best Chef"
                     width={200}
                     height={200}
-                    className="rounded-full"
+                    className="rounded-full transition-transform duration-200 hover:scale-105"
                   />
                 </div>
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">

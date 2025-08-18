@@ -81,7 +81,10 @@ export default function LoginPage() {
                 <button className="text-orange-500 hover:text-orange-600 font-medium underline">Sign Up</button>
               </Link>
             </div>
-            <button className="text-orange-500 hover:text-orange-600 font-medium underline">Forgot password</button>
+
+            <Link href="/forgetpw">
+              <button className="text-orange-500 hover:text-orange-600 font-medium underline">Forgot password</button>
+            </Link>
           </div>
 
           <div className="pt-4">

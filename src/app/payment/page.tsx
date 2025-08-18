@@ -64,38 +64,14 @@ export default function CheckoutPage() {
                     {/* Pick up Section */}
                     <div className="mb-8">
                         <h2 className="text-2xl font-bold text-gray-800 mb-4">Pick up</h2>
-                        <a
-                            href="https://www.google.com/maps/place/Phnom+Penh" // replace with your actual location
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:underline"
-                        >Click here</a>
-                        <div className="w-48 h-32 bg-white rounded-lg border-2 border-gray-300 relative overflow-hidden transition-transform duration-200 hover:scale-105">
-                            <div className="absolute inset-0 bg-gradient-to-br from-pink-100 to-orange-100">
-                                <div className="absolute bottom-4 left-4">
-                                    <MapPin className="w-6 h-6 text-red-600 fill-red-600" />
+                        <div className="mb-4">
+                                    <Link href="https://www.google.com/maps/place/Phnom+Penh+location">
+                                        <img src="/location.png" alt="Location Map" className="w-32 h-24 rounded border" />
+                                        <p className="text-sm text-gray-600 mt-1">Here is the location</p>
+                                    </Link>
                                 </div>
-                                <div className="absolute top-2 right-2">
-                                    <MapPin className="w-4 h-4 text-red-400" />
-                                </div>
-                                {/* Simple map lines */}
-                                <div className="absolute inset-0">
-                                    <svg className="w-full h-full opacity-30">
-                                        <path
-                                            d="M20 20 L180 20 M20 40 L180 40 M20 60 L180 60 M20 80 L180 80 M20 100 L180 100"
-                                            stroke="#666"
-                                            strokeWidth="1"
-                                        />
-                                        <path
-                                            d="M40 0 L40 120 M80 0 L80 120 M120 0 L120 120 M160 0 L160 120"
-                                            stroke="#666"
-                                            strokeWidth="1"
-                                        />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                     </div>           
+
 
                     {/* Payment Section */}
                     <div className="mb-8">
