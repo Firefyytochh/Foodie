@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label"
 import { Star, ShoppingCart, User, Menu, Phone, Mail, MapPin } from 'lucide-react'
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useCartStore } from "../../store/cart"
+import { getUseCartStore } from "../../store/cart"
 
 export default function CheckoutPage() {
+    const useCartStore = getUseCartStore();
     const { items } = useCartStore();
     const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const shippingCost = 4;

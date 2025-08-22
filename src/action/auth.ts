@@ -31,6 +31,21 @@ export async function forgotPassword(email: string): Promise<{
   }
 }
 
+// Request password reset
+export async function requestPasswordReset(email: string) {
+  const supabase = createClient();
+  
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'http://localhost:3000/resetpw',
+  });
+  
+  if (error) {
+    return { error: error.message };
+  }
+  
+  return { success: true };
+}
+
 // Login function
 export async function loginUser(email: string, password: string): Promise<{
   user?: any;

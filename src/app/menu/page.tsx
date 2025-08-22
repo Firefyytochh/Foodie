@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react";
-import { useCartStore } from "@/store/cart";
+import { getUseCartStore } from "@/store/cart";
 import Link from "next/link"
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,7 +36,8 @@ const featuredItems = [
 import { menuItems } from "@/lib/menuData";
 
 export default function FoodieWebsite() {
-  const { addToCart } = useCartStore();
+  const useCartStore = getUseCartStore();
+  const { addToCart, cartItemCount } = useCartStore();
   const [search, setSearch] = useState("");
 
   const filteredMenu = menuItems.filter(item =>

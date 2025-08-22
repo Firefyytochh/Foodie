@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Star, ShoppingCart, User, Menu, Phone, Mail, MapPin } from 'lucide-react'
 import Link from "next/link"
-import { useCartStore } from "@/store/cart"
+import { getUseCartStore } from "@/store/cart"
 import { menuItems } from "@/lib/menuData";
 import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from 'next/navigation';
@@ -14,10 +14,15 @@ import { getCurrentUser, logoutUser } from "../../action/auth"; // Import auth f
 import { useRouter } from 'next/navigation';
 
 export default function FoodieWebsite() {
-  const { addToCart } = useCartStore();
+  const useCartStore = getUseCartStore();
+  const { addToCart, cartItemCount } = useCartStore();
   const [activeCategory, setActiveCategory] = useState("burger");
   const formRef = useRef<HTMLFormElement>(null);
   const [comments, setComments] = useState<any[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [hasMoreComments, setHasMoreComments] = useState(false);
+  const [commentsOffset, setCommentsOffset] = useState(0);
+  const [totalComments, setTotalComments] = useState(0);
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
 
@@ -36,15 +41,53 @@ export default function FoodieWebsite() {
   };
 
 
-  const fetchComments = async () => {
-    const { data: comments, error } = await getComments();
-    if (comments) {
-      setComments(comments);
+  const fetchComments = async (loadMore: boolean = false) => {
+    try {
+      setCommentsLoading(true);
+      console.log('🔍 Starting to fetch comments...');
+
+      const offset = loadMore ? commentsOffset : 0;
+      const result = await getComments(10, offset);
+
+      console.log('🔍 Comments fetch result:', result);
+
+      // Since we're now handling errors internally, result should always be valid
+      if (result && result.data) {
+        console.log('🔍 Setting comments:', result.data);
+
+        if (loadMore) {
+          setComments(prev => [...prev, ...result.data]);
+          setCommentsOffset(prev => prev + 10);
+        } else {
+          setComments(result.data);
+          setCommentsOffset(10);
+        }
+
+        setHasMoreComments(result.hasMore || false);
+        setTotalComments(result.total || 0);
+      } else {
+        console.log('🔍 No data returned, setting empty array');
+        setComments([]);
+        setHasMoreComments(false);
+        setTotalComments(0);
+      }
+    } catch (error) {
+      console.error('🔍 Failed to fetch comments:', error);
+      setComments([]);
+      setHasMoreComments(false);
+      setTotalComments(0);
+    } finally {
+      setCommentsLoading(false);
     }
   };
 
+  // Add this function
+  const loadMoreComments = () => {
+    fetchComments(true);
+  };
+
   useEffect(() => {
-    fetchComments();
+    fetchComments(); // Load initial comments
   }, []);
   const searchParams = useSearchParams();
 
@@ -86,8 +129,13 @@ export default function FoodieWebsite() {
           <div className="flex items-center space-x-4">
             {user ? (
               <>
-                <Link href="/Cart">
+                <Link href="/Cart" className="relative">
                   <ShoppingCart className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
+                  {cartItemCount > 0 && (
+                    <Badge className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">
+                      {cartItemCount}
+                    </Badge>
+                  )}
                 </Link>
                 <Link href="/Profile">
                   <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
@@ -240,8 +288,8 @@ export default function FoodieWebsite() {
                 <div className="space-y-2">
                   <div
                     className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 cursor-pointer ${activeCategory === "burger"
-                        ? "bg-orange-600 text-white"
-                        : "text-orange-800 hover:bg-orange-100"
+                      ? "bg-orange-600 text-white"
+                      : "text-orange-800 hover:bg-orange-100"
                       }`}
                     onClick={() => setActiveCategory("burger")}
                   >
@@ -250,8 +298,8 @@ export default function FoodieWebsite() {
                   </div>
                   <div
                     className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 cursor-pointer ${activeCategory === "drink"
-                        ? "bg-orange-600 text-white"
-                        : "text-orange-800 hover:bg-orange-100"
+                      ? "bg-orange-600 text-white"
+                      : "text-orange-800 hover:bg-orange-100"
                       }`}
                     onClick={() => setActiveCategory("drink")}
                   >
@@ -260,8 +308,8 @@ export default function FoodieWebsite() {
                   </div>
                   <div
                     className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 cursor-pointer ${activeCategory === "ice-cream"
-                        ? "bg-orange-600 text-white"
-                        : "text-orange-800 hover:bg-orange-100"
+                      ? "bg-orange-600 text-white"
+                      : "text-orange-800 hover:bg-orange-100"
                       }`}
                     onClick={() => setActiveCategory("ice-cream")}
                   >
@@ -329,7 +377,8 @@ export default function FoodieWebsite() {
           </div>
         </section>
 
-        {/* Customer Testimonials */}
+        
+
         <section className="px-6 py-16">
           <div className="max-w-7xl mx-auto">
             <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -352,35 +401,18 @@ export default function FoodieWebsite() {
 
               <div>
                 <h2 className="text-4xl font-bold text-orange-900 mb-8">
-                  What Our Customers Say About Us
+                  We have the best chef in the world
                 </h2>
                 <blockquote className="text-lg text-orange-800 mb-6 leading-relaxed">
-                  "I had the pleasure of having fast food at Foodie last night, and I'm still raving about the experience! The attention to detail in presentation and service was impeccable."
+                  "The best chef is the one who can turn a simple burger into a masterpiece — balancing juicy flavors,
+                  fresh ingredients, and perfect seasoning in every bite. A true burger chef doesn’t just cook food,
+                  they create happiness stacked between buns."
                 </blockquote>
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="flex gap-2">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="w-10 h-10 bg-gray-300 rounded-full overflow-hidden">
-                        <Image
-                          src="/photo_2025-08-14_13-43-10-removebg-preview.png"
-                          alt={`User ${i}`}
-                          width={40}
-                          height={40}
-                          className="object-cover w-full h-full"
-                        />
-                      </div>
-                    ))}
-                  </div>
+                 
                   <div>
-                    <div className="font-bold text-orange-900">Customer Feedback</div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                        ))}
-                      </div>
-                      <span className="text-sm text-orange-700">4.8 (1.1k Reviews)</span>
-                    </div>
+                    
+                   
                   </div>
                 </div>
               </div>
@@ -392,51 +424,157 @@ export default function FoodieWebsite() {
         <section className="px-6 py-16 bg-gradient-to-r from-orange-100 to-orange-50">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-4xl font-bold text-orange-900 mb-8 text-center">Leave a Comment</h2>
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <form ref={formRef} action={async (formData) => {
-                const result = await addComment(formData);
-                if (result?.error) {
-                  alert(`Error: ${result.error.message}`);
-                } else {
-                  formRef.current?.reset();
-                  // Re-fetch comments to update the list
-                  fetchComments();
-                }
-              }}>
-                <textarea
-                  name="comment"
-                  className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  rows={4}
-                  placeholder="Write your comment here..."
-                ></textarea>
-                <Button
-                  type="submit"
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-full text-lg transition-transform duration-200 hover:scale-105"
-                >
-                  Submit Comment
-                </Button>
-              </form>
-            </div>
 
+            {/* Comment Form - Only show if user is logged in */}
+            {user ? (
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                    {user.user_metadata?.avatar_url ? (
+                      <Image
+                        src={user.user_metadata.avatar_url}
+                        alt="Your avatar"
+                        width={48}
+                        height={48}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-6 h-6 text-gray-400" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous'}
+                    </p>
+                    <p className="text-sm text-gray-500">What's on your mind?</p>
+                  </div>
+                </div>
+
+                <form ref={formRef} onSubmit={async (e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const comment = formData.get('comment') as string;
+
+                  if (!user?.id) {
+                    alert('You must be logged in to comment');
+                    return;
+                  }
+
+                  const result = await addComment(comment, user.id);
+                  if (result?.error) {
+                    alert(`Error: ${result.error.message}`);
+                  } else {
+                    formRef.current?.reset();
+                    // Reset pagination and fetch fresh comments
+                    setCommentsOffset(0);
+                    await fetchComments(false);
+                    alert('Comment posted successfully!');
+                  }
+                }}>
+                  <textarea
+                    name="comment"
+                    className="w-full p-4 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                    rows={4}
+                    placeholder="Share your thoughts about our food..."
+                    required
+                  ></textarea>
+                  <div className="flex justify-end">
+                    <Button
+                      type="submit"
+                      className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-full text-lg transition-transform duration-200 hover:scale-105"
+                    >
+                      Post Comment
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-8 text-center">
+                <p className="text-gray-600 mb-4">Please log in to leave a comment</p>
+                <Link href="/login">
+                  <Button className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-full">
+                    Log In
+                  </Button>
+                </Link>
+              </div>
+            )}
+
+            {/* Comments Display */}
             <div className="mt-12">
-              <h3 className="text-2xl font-bold text-orange-900 mb-6">Comments ({comments.length})</h3>
-              {comments.length === 0 ? (
-                <p className="text-orange-800 text-lg text-center">No comments yet. Be the first to comment!</p>
+              <h3 className="text-2xl font-bold text-orange-900 mb-6">
+                Comments ({totalComments})
+              </h3>
+
+              {commentsLoading && comments.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">⏳</div>
+                  <p className="text-orange-800">Loading comments...</p>
+                </div>
+              ) : comments.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-6xl mb-4">💬</div>
+                  <p className="text-orange-800 text-lg">No comments yet. Be the first to share your thoughts!</p>
+                </div>
               ) : (
                 <div className="space-y-6">
                   {comments.map((comment) => (
-                    <div key={comment.id} className="bg-white rounded-lg shadow-lg p-6">
-                      <p className="text-gray-800 leading-relaxed">{comment.content}</p>
-                      <div className="flex items-center justify-between mt-4">
-                        <p className="text-sm text-gray-600">
-                          By: {comment.profiles?.username ?? 'Anonymous'}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {new Date(comment.created_at).toLocaleDateString()}
-                        </p>
+                    <div key={comment.id} className="bg-white rounded-lg shadow-lg p-6 transition-transform duration-200 hover:scale-[1.02]">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center flex-shrink-0">
+                          {comment.profiles?.avatar_url ? (
+                            <Image
+                              src={comment.profiles.avatar_url}
+                              alt={`${comment.profiles.username}'s avatar`}
+                              width={48}
+                              height={48}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <User className="w-6 h-6 text-gray-400" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-gray-900">
+                              {comment.profiles?.username || 'Anonymous User'}
+                            </h4>
+                            <p className="text-sm text-gray-500">
+                              {new Date(comment.created_at).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                          <p className="text-gray-800 leading-relaxed">{comment.content}</p>
+                        </div>
                       </div>
                     </div>
                   ))}
+
+                  {/* Load More Button */}
+                  {hasMoreComments && (
+                    <div className="text-center mt-8">
+                      <Button
+                        onClick={loadMoreComments}
+                        disabled={commentsLoading}
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-full text-lg transition-transform duration-200 hover:scale-105 disabled:opacity-50"
+                      >
+                        {commentsLoading ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            See More Comments ({totalComments - comments.length} remaining)
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -503,7 +641,7 @@ export default function FoodieWebsite() {
               </div>
             </div>
 
-  
+
 
             <div>
               <h4 className="font-bold mb-4">Contact Us</h4>

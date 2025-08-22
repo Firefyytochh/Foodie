@@ -4,13 +4,17 @@ import Image from "next/image";
 import { Star, ShoppingCart, User, Menu, Phone, Mail, MapPin } from 'lucide-react';
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge"; // Added
 import { useState, useEffect } from 'react';
 import { getCurrentUser, logoutUser } from '../../action/auth'; // Corrected path
 import { useRouter } from 'next/navigation';
+import { getUseCartStore } from "@/store/cart"; // Added
 
 export default function Navbar() { // Renamed component for clarity
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
+  const useCartStore = getUseCartStore(); // Added
+  const { cartItemCount } = useCartStore(); // Added
 
   useEffect(() => {
     console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -53,8 +57,13 @@ export default function Navbar() { // Renamed component for clarity
         <div className="flex items-center space-x-4">
           {user ? (
             <>
-              <Link href="/Cart">
+              <Link href="/Cart" className="relative">
                 <ShoppingCart className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
+                {cartItemCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">
+                    {cartItemCount}
+                  </Badge>
+                )}
               </Link>
               <Link href="/Profile">
                 <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />

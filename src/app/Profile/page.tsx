@@ -159,8 +159,8 @@ export default function UserProfile() {
 
   const handleLogout = async () => {
     try {
-      const { signOut } = await import('../../action/auth');
-      await signOut();
+      const { logoutUser } = await import('../../action/auth');
+      await logoutUser();
       router.push('/login');
     } catch (error) {
       console.error('Logout error:', error);

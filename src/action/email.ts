@@ -421,10 +421,14 @@ export async function testEmailConfiguration(testEmail?: string): Promise<{
         console.log('Test email sent:', info.messageId);
         transporter.close();
         return { success: true, messageId: info.messageId };
-      } catch (sendError) {
+      } catch (sendError: unknown) { // Explicitly type as unknown
         console.error('Test email send failed:', sendError);
         transporter.close();
-        return { success: false, error: `Test email failed: ${sendError.message}` };
+        let errorMessage = 'An unknown error occurred.';
+        if (sendError instanceof Error) {
+          errorMessage = sendError.message;
+        }
+        return { success: false, error: `Test email failed: ${errorMessage}` };
       }
     }
     

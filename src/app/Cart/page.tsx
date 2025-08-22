@@ -3,9 +3,10 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Star, ShoppingCart, User, Menu, Phone, Mail, MapPin, Minus, Plus, Trash2 } from 'lucide-react'
 import Link from "next/link"
-import { useCartStore } from "@/store/cart"
+import { getUseCartStore } from "@/store/cart"
 
 export default function CartPage() {
+  const useCartStore = getUseCartStore();
   const { items: cartItems, addToCart, removeFromCart, decreaseQuantity } = useCartStore();
 
   const handleIncreaseQuantity = (id: string) => {
