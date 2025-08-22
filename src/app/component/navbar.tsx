@@ -1,0 +1,80 @@
+"use client";
+
+import Image from "next/image";
+import { Star, ShoppingCart, User, Menu, Phone, Mail, MapPin } from 'lucide-react';
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { useState, useEffect } from 'react';
+import { getCurrentUser, logoutUser } from '../../action/auth'; // Corrected path
+import { useRouter } from 'next/navigation';
+
+export default function Navbar() { // Renamed component for clarity
+  const [user, setUser] = useState<any>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log("Supabase Key:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    const fetchUser = async () => {
+      const { user: currentUser } = await getCurrentUser();
+      setUser(currentUser);
+    };
+    fetchUser();
+  }, []);
+
+  const handleLogout = async () => {
+    await logoutUser();
+    setUser(null);
+    router.push('/login');
+  };
+
+  return (
+    <header className="sticky top-0 z-50 bg-gradient-to-r from-orange-400 to-orange-300 px-6 py-4">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center">
+            <Image
+              src="/logo.png"
+              alt="Foodie Logo"
+              width={500}
+              height={500}
+              className="rounded-full"
+            />
+          </div>
+        </div>
+
+        <nav className="hidden md:flex space-x-8">
+          <Link href="/landingpage" className="text-white hover:text-orange-100 transition-colors">Home</Link>
+          <Link href="/Aboutus" className="text-white hover:text-orange-100 transition-colors">About Us</Link>
+          <Link href="/menu" className="text-white hover:text-orange-100 transition-colors">Menu</Link>
+          <Link href="#footer" className="text-white hover:text-orange-100 transition-colors">Contact</Link>
+        </nav>
+
+        <div className="flex items-center space-x-4">
+          {user ? (
+            <>
+              <Link href="/Cart">
+                <ShoppingCart className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
+              </Link>
+              <Link href="/Profile">
+                <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
+              </Link>
+              <Button onClick={handleLogout} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md">
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link href="/login">
+                <Button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md">Login</Button>
+              </Link>
+              <Link href="/Signup">
+                <Button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md">Sign Up</Button>
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}

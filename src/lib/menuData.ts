@@ -1,0 +1,23 @@
+export const menuItems = [
+  { id: "chicken-burger", name: "Chicken Burger", price: 5, rating: 4.9, category: "burger",image: "/Southern-Fried-Chicken-Burger-1-removebg-preview.png" },
+  { id: "beef-burger", name: "Beef Burger", price: 5.5, rating: 4.6, category: "burger", image: "/burger1.jpg" },
+  { id: "sheep-burger", name: "Sheep Burger", price: 8, rating: 4.2, category: "burger", image: "/sheepburger-removebg-preview.png" },
+  { id: "crocodile-burger", name: "Crocodile burger", price: 15, rating: 3.6, category: "burger", image: "/Crocodile-removebg-preview.png" },
+  { id: "vegetable-burger", name: "Vegetable Burger", price: 5, rating: 3.6, category: "burger", image: "/images-removebg-preview.png" },
+  { id: "vegan-meat", name: "Vegan meat", price: 5, rating: 4.9, category: "burger", image: "/vegan_meat-removebg-preview.png" },
+  { id: "cheese-burger", name: "Cheese Burger", price: 6, rating: 4, category: "burger", image: "/cheese_burger-removebg-preview.png" },
+  { id: "double-chicken", name: "Double Chicken", price: 9, rating: 4.5, category: "burger", image: "/double-chicken-burger-1700648383939-removebg-preview.png" },
+  { id: "family-set", name: "Family Set", price: 25, rating: 4.3, category: "set", image: "/family-party-removebg-preview.png" },
+  { id: "coke", name: "Coke", price: 1, rating: 4.9, category: "drink", image: "/CokeinCan-removebg-preview.png" },
+  { id: "pepsi", name: "Pepsi", price: 1, rating: 4.9, category: "drink", image: "/pepsi-cola-24x033cl-removebg-preview.png" },
+  { id: "boba", name: "BoBa", price: 2.5, rating: 4.6, category: "drink", image: "/Bona-removebg-preview.png" },
+  { id: "strawberry-ice-cream", name: "Stawberry Ice-cream", price: 3, rating: 5, category: "ice-cream", image: "/Strawberry-Ice-Cream-removebg-preview.png" },
+  { id: "banana-ice-cream", name: "Banana Ice-cream", price: 3, rating: 4.7, category: "ice-cream", image: "/Banana-ice-cream-removebg-preview.png" },
+  { id: "chocolate-ice-cream", name: "Chocolate Ice-cream", price: 3, rating: 4.6, category: "ice-cream", image: "/Chocolate-ice-cream-removebg-preview.png" },
+  { id: "vanilla-ice-cream", name: "Vanilla Ice-cream", price: 3, rating: 4.6, category: "ice-cream", image: "/vanilla-ice-cream-removebg-preview.png" },
+  { id: "banana-strawberry", name: "Banana+strawberry", price: 3, rating: 4.9, category: "ice-cream", image: "/fluffy-berry-banana-ice-cream-5-removebg-preview.png" },
+  { id: "kids-set", name: "Kids-set", price: 6, rating: 3.8, category: "set", image: "/beb-hero-kids-meal-removebg-preview.png" },
+  { id: "beef-chicken", name: "Beef+chicken", price: 8, rating: 4.4, category: "burger", image: "/Beef+chicken-removebg-preview.png" },
+  { id: "sheep-crocodile", name: "Sheep+Crocodile", price: 15, rating: 4.7, category: "burger", image: "/Sheep+crocodile-removebg-preview.png" },
+  { id: "french-fries", name: "French fries", price: 3, rating: 5, category: "side", image: "/Air-fried-french-fries-removebg-preview.png" }
+];

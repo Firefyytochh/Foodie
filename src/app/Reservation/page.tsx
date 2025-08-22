@@ -4,25 +4,17 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { ShoppingCart, User, ChevronLeft, ChevronRight, Menu, Phone, Mail, MapPin } from "lucide-react"
+import { ShoppingCart, User, Menu, Phone, Mail, MapPin, Calendar as CalendarIcon } from "lucide-react" 
 import Image from "next/image"
 
 import Link from "next/link"
+import { Calendar } from "@/components/ui/calendar" 
+import { format } from "date-fns" 
+import { cn } from "@/lib/utils" 
 
 export default function FoodieReservation() {
-    const [selectedDate, setSelectedDate] = useState(18)
-    const [currentMonth, setCurrentMonth] = useState("July 2025")
-
-    const daysInMonth = Array.from({ length: 31 }, (_, i) => i + 1)
-    const startDay = 2 // July 2025 starts on Tuesday
-
-    const handlePrevMonth = () => {
-        // Handle month navigation
-    }
-
-    const handleNextMonth = () => {
-        // Handle month navigation
-    }
+    const [date, setDate] = useState<Date | undefined>(new Date());
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100">
@@ -117,43 +109,31 @@ export default function FoodieReservation() {
                             {/* Date Section */}
                             <div>
                                 <h4 className="text-xl font-bold text-gray-800 mb-4">Date</h4>
-                                <div className="bg-white rounded-lg p-4 max-w-sm transition-transform duration-200 hover:scale-105">
-                                    {/* Calendar Header */}
-                                    <div className="flex items-center justify-between mb-4">
-                                        <button onClick={handlePrevMonth}>
-                                            <ChevronLeft className="h-5 w-5 text-gray-600" />
-                                        </button>
-                                        <h5 className="font-semibold text-gray-800">{currentMonth}</h5>
-                                        <button onClick={handleNextMonth}>
-                                            <ChevronRight className="h-5 w-5 text-gray-600" />
-                                        </button>
-                                    </div>
-
-                                    {/* Calendar Grid */}
-                                    <div className="grid grid-cols-7 gap-1 text-center text-sm">
-                                        {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((day) => (
-                                            <div key={day} className="p-2 font-medium text-gray-600">
-                                                {day}
-                                            </div>
-                                        ))}
-
-                                        {/* Empty cells for start of month */}
-                                        {Array.from({ length: startDay - 1 }, (_, i) => (
-                                            <div key={`empty-${i}`} className="p-2"></div>
-                                        ))}
-
-                                        {/* Calendar days */}
-                                        {daysInMonth.map((day) => (
-                                            <button
-                                                key={day}
-                                                onClick={() => setSelectedDate(day)}
-                                                className={`p-2 rounded ${day === selectedDate ? "bg-blue-600 text-white" : "hover:bg-gray-100 text-gray-800"
-                                                    }`}
-                                            >
-                                                {day}
-                                            </button>
-                                        ))}
-                                    </div>
+                                <div className="relative">
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-[280px] justify-start text-left font-normal",
+                                            !date && "text-muted-foreground"
+                                        )}
+                                        onClick={() => setIsCalendarOpen(!isCalendarOpen)} 
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                    {isCalendarOpen && (
+                                        <div className="absolute z-10 mt-2 bg-white border border-gray-200 rounded-md shadow-lg p-0">
+                                            <Calendar
+                                                mode="single"
+                                                selected={date}
+                                                onSelect={(selectedDate) => {
+                                                    setDate(selectedDate);
+                                                    setIsCalendarOpen(false); 
+                                                }}
+                                                initialFocus
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -193,90 +173,113 @@ export default function FoodieReservation() {
 
             {/* Footer */}
             <footer id="footer" className="bg-orange-800 text-white px-6 py-12">
-                <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8">
-                    <div>
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                                <Image
-                                    src="/logo.png"
-                                    width={40}
-                                    height={40}
-                                    className="rounded-full"
-                                    alt="Foodie Logo"
-                                />
-                            </div>
-                            <span className="text-2xl font-bold">Foodie</span>
-                        </div>
-                        <p className="text-orange-200 mb-4">Made by food lover for food lover</p>
-                    </div>
-
-                    <div>
-                        <h4 className="font-bold mb-4">Useful links</h4>
-                        <div className="space-y-2 text-orange-200">
-                            <div>About us</div>
-                            <div>Menu</div>
-                            <div>Cart</div>
-                            <div>Favorite</div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 className="font-bold mb-4">Main Menu</h4>
-                        <div className="space-y-2 text-orange-200">
-                            <div>Cheese Burger</div>
-                            <div>Drink</div>
-                            <div>Best</div>
-                            <div>Reservation</div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 className="font-bold mb-4">Contact Us</h4>
-                        <div className="space-y-2 text-orange-200">
-                            <div className="flex items-center gap-2">
-                                <Mail className="w-4 h-4" />
-                                <span>Foodieburger@gmail.com</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Phone className="w-4 h-4" />
-                                <span>+855 96 55 82 129</span>
-                            </div>
-                            <div className="mt-4">
-                                <div className="font-bold mb-2">Social Media</div>
-                                <div className="flex gap-2">
-                                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                                        <Image
-                                            src="/face-book-removebg-preview.png"
-                                            alt="Facebook"
-                                            width={32}
-                                            height={32}
-                                            className="rounded-full"
-                                        />
-                                    </div>
-                                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                                        <Image
-                                            src="/instagram-removebg-preview.png"
-                                            alt="Instagram"
-                                            width={32}
-                                            height={32}
-                                            className="rounded-full"
-                                        />
-                                    </div>
-                                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                                        <Image
-                                            src="/x-removebg-preview.png"
-                                            alt="X"
-                                            width={32}
-                                            height={32}
-                                            className="rounded-full"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+          <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                  <Image
+                    src="/logo.png"
+                    width={40}
+                    height={40}
+                    className="rounded-full"
+                    alt="Foodie Logo"
+                  />
                 </div>
-            </footer>
+                <span className="text-2xl font-bold">Foodie</span>
+              </div>
+              <p className="text-orange-200 mb-4">Made by food lover for food lover</p>
+            </div>
+
+            <div>
+              <h4 className="font-bold mb-4">Useful links</h4>
+              <div className="space-y-2 text-orange-200 underline">
+                <Link href="/Aboutus">About us</Link>
+
+              </div>
+              <div className="space-y-2 text-orange-200  underline">
+
+                <Link href="/menu">Menu</Link>
+
+              </div>
+              <div className="space-y-2 text-orange-200  underline">
+
+                <Link href="/Cart">Cart</Link>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-bold mb-4">Main Menu</h4>
+              <div className="space-y-2 text-orange-200  underline">
+                <Link href="/landingpage?category=burger ">Burger</Link>
+
+
+              </div>
+              <div className="space-y-2 text-orange-200  underline">
+
+                <Link href="/landingpage?category=drink">Drink</Link>
+
+              </div>
+              <div className="space-y-2 text-orange-200  underline">
+
+                <Link href="/landingpage?category=ice-cream">Ice Cream</Link>
+
+              </div>
+              <div className="space-y-2 text-orange-200  underline">
+
+                <Link href="/landingpage?category=dessert">Dessert</Link>
+
+              </div>
+            </div>
+
+  
+
+            <div>
+              <h4 className="font-bold mb-4">Contact Us</h4>
+              <div className="space-y-2 text-orange-200">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  <span>Foodieburger@gmail.com</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4" />
+                  <span>+855 96 55 82 129</span>
+                </div>
+                <div className="mt-4">
+                  <div className="font-bold mb-2">Social Media</div>
+                  <div className="flex gap-2">
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                      <Image
+                        src="/face-book-removebg-preview.png"
+                        alt="Facebook"
+                        width={32}
+                        height={32}
+                        className="rounded-full"
+                      />
+                    </div>
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                      <Image
+                        src="/instagram-removebg-preview.png"
+                        alt="Instagram"
+                        width={32}
+                        height={32}
+                        className="rounded-full"
+                      />
+                    </div>
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                      <Image
+                        src="/x-removebg-preview.png"
+                        alt="X"
+                        width={32}
+                        height={32}
+                        className="rounded-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </footer>
         </div>
     )
 }

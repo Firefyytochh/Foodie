@@ -1,23 +1,182 @@
-import Image from "next/image"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { ShoppingCart, User, Edit3, FileText, CreditCard, MapPin, ScrollText, HelpCircle, Mail, Phone } from 'lucide-react'
+"use client";
+
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Edit3, ShoppingCart, User, Mail, Phone } from "lucide-react";
+import { getCurrentUser, updateUserProfile } from "@/action/auth";
+import { useRouter } from 'next/navigation';
 
 export default function UserProfile() {
+  const [userData, setUserData] = useState({
+    name: "Your name",
+    email: "",
+    mobile: "Your phone Number"
+  });
+  const [editField, setEditField] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const { getCurrentUser } = await import('../../action/auth');
+        const { user, error } = await getCurrentUser();
+        
+        if (error || !user) {
+          router.push('/login');
+          return;
+        }
+
+        if (user) {
+          console.log('🔍 User ID:', user.id); // Debug
+          setCurrentUser(user);
+          
+          // Fetch profile data
+          try {
+            const { getProfile } = await import('../../action/profile');
+            const { data: profile, error: profileError } = await getProfile(user.id);
+            
+            console.log('🔍 Profile data:', profile); // Debug
+            console.log('🔍 Profile error:', profileError); // Debug
+            
+            if (profile && profile.avatar_url) {
+              console.log('🔍 Setting avatar to:', profile.avatar_url); // Debug
+              setAvatar(profile.avatar_url);
+            } else {
+              console.log('🔍 No avatar_url found in profile'); // Debug
+            }
+            
+            setUserData(prev => ({
+              ...prev,
+              email: user.email || prev.email,
+              name: profile?.username || prev.name,     // Use optional chaining
+              mobile: profile?.phone_number || prev.mobile  // Use optional chaining
+            }));
+            
+            if (!profile) {
+              // Create initial profile for new users
+              const { updateProfile } = await import('../../action/profile');
+              await updateProfile(user.id, {
+                username: user.user_metadata?.full_name || "Your name",
+                phone_number: user.user_metadata?.mobile || "Your phone Number"
+              });
+            }
+          } catch (error) {
+            console.error('Profile fetch failed:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+      }
+    };
+
+    fetchUser();
+  }, [router]);
+
+  const handleChange = (field: string, value: string) => {
+    setUserData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    
+    try {
+      if (currentUser) {
+        // Update auth metadata - map name to full_name and mobile to phone in metadata
+        const authResult = await updateUserProfile({
+          data: {
+            full_name: userData.mobile, // Store phone number in full_name metadata
+            mobile: userData.mobile     // Also keep in mobile for compatibility
+          }
+        });
+
+        // Update the profiles table - store name in username and mobile in phone_number
+        const { updateProfile } = await import('../../action/profile');
+        const profileResult = await updateProfile(currentUser.id, {
+          username: userData.name,
+          phone_number: userData.mobile  // Changed from 'phone' to 'phone_number'
+        });
+
+        if (authResult.error || profileResult.error) {
+          console.error("Error updating profile:", authResult.error || profileResult.error);
+          alert("Failed to save changes.");
+        } else {
+          alert("Profile updated successfully!");
+          setEditField(null);
+        }
+      }
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      alert("Failed to save changes.");
+    }
+    
+    setSaving(false);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+    
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      alert('File size must be less than 5MB');
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      const { uploadProfileImage } = await import('../../action/profile');
+      const result = await uploadProfileImage(formData, currentUser.id);
+      
+      if (result.error) {
+        alert('Upload failed: ' + result.error);
+      } else if (result.url) {
+        setAvatar(result.url);
+        alert('Profile image updated!');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const { signOut } = await import('../../action/auth');
+      await signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still redirect even if logout fails
+      router.push('/login');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100">
+      {/* Header */}
       <header className="sticky top-0 z-50 bg-gradient-to-r from-orange-400 to-orange-300 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center">
-              <Image
-                src="/logo.png"
-                alt="Foodie Logo"
-                width={500}
-                height={500}
-                className="rounded-full"
-              />
+              <Image src="/logo.png" alt="Foodie Logo" width={500} height={500} className="rounded-full" />
             </div>
           </div>
 
@@ -29,199 +188,261 @@ export default function UserProfile() {
           </nav>
 
           <div className="flex items-center space-x-4">
-            <Link href="/Cart">
-              <ShoppingCart className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
-            </Link>
-            <Link href="/Profile">
-              <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
-            </Link>
+            <Link href="/Cart"><ShoppingCart className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" /></Link>
+            <Link href="/Profile"><User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" /></Link>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Profile Content */}
       <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Page Title */}
         <h1 className="text-4xl md:text-5xl font-bold text-center text-black mb-12 font-serif italic">
           User Profile
         </h1>
 
-        {/* Profile Information Cards */}
         <div className="space-y-6 mb-12">
+          {/* Profile Image Section */}
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-6">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="relative">
+                <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                  {avatar ? (
+                    <Image
+                      src={avatar}
+                      alt="Profile"
+                      width={128}
+                      height={128}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-16 h-16 text-gray-400" />
+                  )}
+                </div>
+                <label className="absolute bottom-0 right-0 bg-orange-500 text-white p-2 rounded-full cursor-pointer hover:bg-orange-600 transition-colors">
+                  <Edit3 className="w-4 h-4" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-black">{userData.name}</h2>
+                <p className="text-gray-600">{userData.email}</p>
+              </div>
+              {uploading && (
+                <p className="text-orange-500">Uploading image...</p>
+              )}
+            </div>
+          </div>
+
           {/* Name Field */}
           <Card className="p-6 bg-white/90 backdrop-blur-sm shadow-lg transition-transform duration-200 hover:scale-105">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Name</p>
-                <p className="text-xl font-semibold text-black">Pery Somnang</p>
+                {editField === "name" ? (
+                  <input
+                    type="text"
+                    value={userData.name}
+                    onChange={(e) => handleChange("name", e.target.value)}
+                    className="text-xl font-semibold text-black border-b border-gray-400 focus:outline-none"
+                  />
+                ) : (
+                  <p className="text-xl font-semibold text-black">{userData.name}</p>
+                )}
               </div>
-              <Button variant="ghost" size="icon" className="text-gray-600 hover:text-black">
-                <Edit3 className="h-5 w-5" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-gray-600 hover:text-black"
+                  onClick={() => setEditField(editField === "name" ? null : "name")}
+                >
+                  <Edit3 className="h-5 w-5" />
+                </Button>
+                {editField === "name" && (
+                  <Button
+                    size="sm"
+                    className="bg-orange-400 text-white"
+                    onClick={handleSave}
+                    disabled={saving}
+                  >
+                    Save
+                  </Button>
+                )}
+              </div>
             </div>
           </Card>
 
           {/* Email Field */}
           <Card className="p-6 bg-white/90 backdrop-blur-sm shadow-lg transition-transform duration-200 hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Email</p>
-                <p className="text-xl font-semibold text-black">Perysomnang24$kit.edu.kh</p>
-              </div>
-              <Button variant="ghost" size="icon" className="text-gray-600 hover:text-black">
-                <Edit3 className="h-5 w-5" />
-              </Button>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Email</p>
+              <p className="text-xl font-semibold text-black">{userData.email || "Loading..."}</p>
             </div>
           </Card>
 
-          {/* Mobile Number Field */}
+          {/* Mobile Field */}
           <Card className="p-6 bg-white/90 backdrop-blur-sm shadow-lg transition-transform duration-200 hover:scale-105">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Mobile Number</p>
-                <p className="text-xl font-semibold text-black">0965582129</p>
+                {editField === "mobile" ? (
+                  <input
+                    type="text"
+                    value={userData.mobile}
+                    onChange={(e) => handleChange("mobile", e.target.value)}
+                    className="text-xl font-semibold text-black border-b border-gray-400 focus:outline-none"
+                  />
+                ) : (
+                  <p className="text-xl font-semibold text-black">{userData.mobile}</p>
+                )}
               </div>
-              <Button variant="ghost" size="icon" className="text-gray-600 hover:text-black">
-                <Edit3 className="h-5 w-5" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-gray-600 hover:text-black"
+                  onClick={() => setEditField(editField === "mobile" ? null : "mobile")}
+                >
+                  <Edit3 className="h-5 w-5" />
+                </Button>
+                {editField === "mobile" && (
+                  <Button
+                    size="sm"
+                    className="bg-orange-400 text-white"
+                    onClick={handleSave}
+                    disabled={saving}
+                  >
+                    Save
+                  </Button>
+                )}
+              </div>
             </div>
           </Card>
-        </div>
-
-        {/* Action Buttons Grid */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          {/* Top Row */}
-          <Card className="p-6 bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-transform duration-200 hover:scale-105 cursor-pointer">
-            <div className="flex flex-col items-center text-center">
-              <FileText className="h-8 w-8 mb-3 text-black" />
-              <span className="font-semibold text-black">Order</span>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-transform duration-200 hover:scale-105 cursor-pointer">
-            <div className="flex flex-col items-center text-center">
-              <CreditCard className="h-8 w-8 mb-3 text-black" />
-              <span className="font-semibold text-black">Payments</span>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-transform duration-200 hover:scale-105 cursor-pointer">
-            <div className="flex flex-col items-center text-center">
-              <MapPin className="h-8 w-8 mb-3 text-black" />
-              <span className="font-semibold text-black">Address</span>
-            </div>
-          </Card>
-
-          {/* Bottom Row */}
-          <Card className="p-6 bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-transform duration-200 hover:scale-105 cursor-pointer col-span-1">
-            <div className="flex items-center">
-              <ScrollText className="h-6 w-6 mr-3 text-black" />
-              <span className="font-semibold text-black">Term of Service</span>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-transform duration-200 hover:scale-105 cursor-pointer col-span-1">
-            <div className="flex items-center">
-              <HelpCircle className="h-6 w-6 mr-3 text-black" />
-              <span className="font-semibold text-black">Help</span>
-            </div>
-          </Card>
-        </div>
-
-        {/* Logout Button */}
-        <div className="flex justify-center">
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-full font-semibold text-lg">
-            Log out
-          </Button>
+            <Button
+              onClick={handleLogout}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 text-lg font-semibold rounded-full shadow-lg transition-all duration-200 hover:shadow-xl"
+            >
+              Log out
+            </Button>
         </div>
       </main>
 
       {/* Footer */}
-      <footer id="footer" className="bg-orange-800 text-white px-6 py-12">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                <Image
-                  src="/logo.png"
-                  width={40}
-                  height={40}
-                  className="rounded-full"
-                  alt="Foodie Logo"
-                />
+     {/* Footer */}
+           <footer id="footer" className="bg-orange-800 text-white px-6 py-12">
+          <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                  <Image
+                    src="/logo.png"
+                    width={40}
+                    height={40}
+                    className="rounded-full"
+                    alt="Foodie Logo"
+                  />
+                </div>
+                <span className="text-2xl font-bold">Foodie</span>
               </div>
-              <span className="text-2xl font-bold">Foodie</span>
+              <p className="text-orange-200 mb-4">Made by food lover for food lover</p>
             </div>
-            <p className="text-orange-200 mb-4">Made by food lover for food lover</p>
-          </div>
 
-          <div>
-            <h4 className="font-bold mb-4">Useful links</h4>
-            <div className="space-y-2 text-orange-200">
-              <div>About us</div>
-              <div>Menu</div>
-              <div>Cart</div>
-              <div>Favorite</div>
-            </div>
-          </div>
+            <div>
+              <h4 className="font-bold mb-4">Useful links</h4>
+              <div className="space-y-2 text-orange-200 underline">
+                <Link href="/Aboutus">About us</Link>
 
-          <div>
-            <h4 className="font-bold mb-4">Main Menu</h4>
-            <div className="space-y-2 text-orange-200">
-              <div>Cheese Burger</div>
-              <div>Drink</div>
-              <div>Best</div>
-              <div>Reservation</div>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="font-bold mb-4">Contact Us</h4>
-            <div className="space-y-2 text-orange-200">
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                <span>Foodieburger@gmail.com</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                <span>+855 96 55 82 129</span>
+              <div className="space-y-2 text-orange-200  underline">
+
+                <Link href="/menu">Menu</Link>
+
               </div>
-              <div className="mt-4">
-                <div className="font-bold mb-2">Social Media</div>
-                <div className="flex gap-2">
-                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                    <Image
-                      src="/face-book-removebg-preview.png"
-                      alt="Facebook"
-                      width={32}
-                      height={32}
-                      className="rounded-full"
-                    />
-                  </div>
-                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                    <Image
-                      src="/instagram-removebg-preview.png"
-                      alt="Instagram"
-                      width={32}
-                      height={32}
-                      className="rounded-full"
-                    />
-                  </div>
-                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                    <Image
-                      src="/x-removebg-preview.png"
-                      alt="X"
-                      width={32}
-                      height={32}
-                      className="rounded-full"
-                    />
+              <div className="space-y-2 text-orange-200  underline">
+
+                <Link href="/Cart">Cart</Link>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-bold mb-4">Main Menu</h4>
+              <div className="space-y-2 text-orange-200  underline">
+                <Link href="/landingpage?category=burger ">Burger</Link>
+
+
+              </div>
+              <div className="space-y-2 text-orange-200  underline">
+
+                <Link href="/landingpage?category=drink">Drink</Link>
+
+              </div>
+              <div className="space-y-2 text-orange-200  underline">
+
+                <Link href="/landingpage?category=ice-cream">Ice Cream</Link>
+
+              </div>
+              <div className="space-y-2 text-orange-200  underline">
+
+                <Link href="/landingpage?category=dessert">Dessert</Link>
+
+              </div>
+            </div>
+
+  
+
+            <div>
+              <h4 className="font-bold mb-4">Contact Us</h4>
+              <div className="space-y-2 text-orange-200">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  <span>Foodieburger@gmail.com</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4" />
+                  <span>+855 96 55 82 129</span>
+                </div>
+                <div className="mt-4">
+                  <div className="font-bold mb-2">Social Media</div>
+                  <div className="flex gap-2">
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                      <Image
+                        src="/face-book-removebg-preview.png"
+                        alt="Facebook"
+                        width={32}
+                        height={32}
+                        className="rounded-full"
+                      />
+                    </div>
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                      <Image
+                        src="/instagram-removebg-preview.png"
+                        alt="Instagram"
+                        width={32}
+                        height={32}
+                        className="rounded-full"
+                      />
+                    </div>
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                      <Image
+                        src="/x-removebg-preview.png"
+                        alt="X"
+                        width={32}
+                        height={32}
+                        className="rounded-full"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </footer>
+        </footer>
     </div>
-  )
+  );
 }
