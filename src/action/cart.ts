@@ -14,7 +14,7 @@ interface CartStore {
   addToCart: (item: Omit<CartItem, 'quantity'>) => void
   removeFromCart: (id: string) => void
   decreaseQuantity: (id: string) => void
-  clearCart: () => void // Add this line
+  clearCart: () => void
   cartItemCount: number
 }
 
@@ -64,7 +64,7 @@ export const getUseCartStore = () => {
             })
           }
         },
-        clearCart: () => set({ items: [] }), // Add this function
+        clearCart: () => set({ items: [] }),
         get cartItemCount() {
           return get().items.reduce((total, item) => total + item.quantity, 0)
         },

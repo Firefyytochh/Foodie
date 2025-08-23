@@ -6,11 +6,16 @@ export function createClient() {
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use service role for server actions
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // Use anon key for user sessions
     {
       cookies: {
         getAll() {
-          return [];
+          const allCookies: { name: string; value: string }[] = [];
+          // Iterate over the cookieStore to get all cookies
+          for (const [name, value] of cookieStore as any) { // Cast to any to bypass TS error if it persists
+            allCookies.push({ name, value });
+          }
+          return allCookies;
         },
         async setAll(cookiesToSet) { // Make setAll async
           try {

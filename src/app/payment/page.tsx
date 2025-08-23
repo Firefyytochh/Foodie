@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Star, ShoppingCart, User, Menu, Phone, Mail, MapPin, CreditCard, QrCode } from 'lucide-react'
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getUseCartStore } from "../../store/cart"
-import { createPayment } from "../../action/payment"
+import { getUseCartStore } from "@/store/cart"
+import { createPayment } from "@/action/payment"
+import { createClient } from "@supabase/supabase-js"
 import { useRouter } from "next/navigation"
 
 export default function CheckoutPage() {
@@ -24,8 +25,38 @@ export default function CheckoutPage() {
     
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'qr' | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [user, setUser] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
     const formRef = useRef<HTMLFormElement>(null);
     const router = useRouter();
+   const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+    // Get user on component mount
+    useEffect(() => {
+        const getUser = async () => {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error || !user) {
+                    alert('Please log in to make a payment');
+                    router.push('/login');
+                    return;
+                }
+                
+                setUser(user);
+            } catch (error) {
+                console.error('Auth error:', error);
+                router.push('/login');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        getUser();
+    }, [supabase.auth, router]);
 
     const generateOrderId = () => {
         return `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -33,6 +64,12 @@ export default function CheckoutPage() {
 
     const handlePayment = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        
+        if (!user) {
+            alert('Please log in to make a payment');
+            router.push('/login');
+            return;
+        }
         
         if (!selectedPaymentMethod) {
             alert('Please select a payment method');
@@ -74,7 +111,8 @@ export default function CheckoutPage() {
             })
         };
 
-        const result = await createPayment(paymentData);
+        // Pass userId as second parameter
+        const result = await createPayment(paymentData, user.id);
 
         if (result.error) {
             alert(`Payment failed: ${result.error.message}`);
@@ -86,6 +124,18 @@ export default function CheckoutPage() {
 
         setIsSubmitting(false);
     };
+
+    // Show loading while checking authentication
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-4xl mb-4">⏳</div>
+                    <p className="text-orange-800 text-lg">Checking authentication...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100">
@@ -123,6 +173,12 @@ export default function CheckoutPage() {
 
             <main className="relative z-10 px-6 py-8">
                 <h1 className="text-5xl font-bold text-center text-gray-800 mb-12 italic">Check out</h1>
+                
+                {user && (
+                    <div className="text-center mb-8">
+                        <p className="text-lg text-gray-700">Welcome back, {user.email}!</p>
+                    </div>
+                )}
 
                 <form ref={formRef} onSubmit={handlePayment} className="max-w-6xl mx-auto">
                     <div className="mb-8">
@@ -415,26 +471,26 @@ export default function CheckoutPage() {
                         <div className="space-y-2 text-orange-200 underline">
                             <Link href="/Aboutus">About us</Link>
                         </div>
-                        <div className="space-y-2 text-orange-200  underline">
+                        <div className="space-y-2 text-orange-200 underline">
                             <Link href="/menu">Menu</Link>
                         </div>
-                        <div className="space-y-2 text-orange-200  underline">
+                        <div className="space-y-2 text-orange-200 underline">
                             <Link href="/Cart">Cart</Link>
                         </div>
                     </div>
 
                     <div>
                         <h4 className="font-bold mb-4">Main Menu</h4>
-                        <div className="space-y-2 text-orange-200  underline">
+                        <div className="space-y-2 text-orange-200 underline">
                             <Link href="/landingpage?category=burger">Burger</Link>
                         </div>
-                        <div className="space-y-2 text-orange-200  underline">
+                        <div className="space-y-2 text-orange-200 underline">
                             <Link href="/landingpage?category=drink">Drink</Link>
                         </div>
-                        <div className="space-y-2 text-orange-200  underline">
+                        <div className="space-y-2 text-orange-200 underline">
                             <Link href="/landingpage?category=ice-cream">Ice Cream</Link>
                         </div>
-                        <div className="space-y-2 text-orange-200  underline">
+                        <div className="space-y-2 text-orange-200 underline">
                             <Link href="/landingpage?category=dessert">Dessert</Link>
                         </div>
                     </div>

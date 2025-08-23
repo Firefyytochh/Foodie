@@ -13,7 +13,6 @@ function getSupabaseAdmin() {
   );
 }
 
-// Simplified approach - pass userId directly instead of trying to get it server-side
 export async function createPayment(
   paymentData: {
     orderId: string;
@@ -86,32 +85,6 @@ export async function getUserPayments(userId: string) {
       .from('payments')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      return { data: null, error: error.message };
-    }
-
-    return { data, error: null };
-    
-  } catch (error: any) {
-    return { data: null, error: error.message };
-  }
-}
-
-export async function getAllPayments() {
-  try {
-    const supabaseAdmin = getSupabaseAdmin();
-    
-    const { data, error } = await supabaseAdmin
-      .from('payments')
-      .select(`
-        *,
-        profiles (
-          username,
-          avatar_url
-        )
-      `)
       .order('created_at', { ascending: false });
 
     if (error) {

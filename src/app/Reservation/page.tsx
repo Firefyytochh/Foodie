@@ -1,20 +1,95 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ShoppingCart, User, Menu, Phone, Mail, MapPin, Calendar as CalendarIcon } from "lucide-react" 
 import Image from "next/image"
-
 import Link from "next/link"
 import { Calendar } from "@/components/ui/calendar" 
 import { format } from "date-fns" 
 import { cn } from "@/lib/utils" 
+import { createReservation } from "../../action/reservation"
+import { useRouter } from "next/navigation"
+import { createClient } from "../../../utils/supabase/client"
 
 export default function FoodieReservation() {
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [user, setUser] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const formRef = useRef<HTMLFormElement>(null);
+    const router = useRouter();
+    const supabase = createClient();
+
+    // Check if user is logged in
+    useEffect(() => {
+        const checkUser = async () => {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error || !user) {
+                    alert('Please log in to make a reservation');
+                    router.push('/login');
+                    return;
+                }
+                
+                setUser(user);
+            } catch (error) {
+                console.error('Auth error:', error);
+                router.push('/login');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        checkUser();
+    }, [supabase.auth, router]);
+
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        
+        if (!user) {
+            alert('Please log in to make a reservation');
+            router.push('/login');
+            return;
+        }
+        
+        setIsSubmitting(true);
+        
+        const formData = new FormData(event.currentTarget);
+        
+        // Add the selected date to form data
+        if (date) {
+            formData.set('reservationDate', format(date, 'yyyy-MM-dd'));
+        }
+        
+        // Pass userId as second parameter
+        const result = await createReservation(formData, user.id);
+        
+        if (result.error) {
+            alert(`Error: ${result.error.message}`);
+        } else {
+            alert('Reservation created successfully!');
+            router.push('/Rdone');
+        }
+        
+        setIsSubmitting(false);
+    };
+
+    // Show loading while checking authentication
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-4xl mb-4">⏳</div>
+                    <p className="text-orange-800 text-lg">Checking authentication...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100">
@@ -52,53 +127,81 @@ export default function FoodieReservation() {
 
             {/* Thank You Message */}
             <div className="flex items-center justify-between px-6 py-8 bg-gradient-to-r from-orange-300 to-orange-200">
-                <h1 className="text-4xl font-bold text-gray-800 italic">Thank You for your Reservation</h1>
+                <h1 className="text-4xl font-bold text-gray-800 italic">Make Your Reservation</h1>
+                {user && (
+                    <p className="text-lg text-gray-700">Welcome, {user.email}!</p>
+                )}
             </div>
 
             {/* Main Content */}
             <div className="px-6 py-8">
                 {/* Foodie Logo Section */}
                 <div className="text-center mb-12">
-                    <img src="/logo.png" alt="Foodie Logo" className="h-24 w-auto h-70 mx-auto mb-4" />
-                    <h2 className="text-4xl font-bold text-gray-800 italic mb-8 ">Please Enter Your Information</h2>
+                    <img src="/logo.png" alt="Foodie Logo" className="h-24 w-auto mx-auto mb-4" />
+                    <h2 className="text-4xl font-bold text-gray-800 italic mb-8">Please Enter Your Information</h2>
                 </div>
 
                 {/* Form */}
-                <div className="max-w-4xl mx-auto space-y-8">
+                <form ref={formRef} onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8">
                     {/* Name Section */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-2xl font-bold text-gray-800 mb-2">Name</label>
-                            <Input placeholder="First Name" className="h-12 bg-white/80 border-gray-300 transition-transform duration-200 hover:scale-105" />
-                            <p className="text-sm text-gray-600 mt-1">First Name</p>
+                            <label className="block text-2xl font-bold text-gray-800 mb-2">First Name *</label>
+                            <Input 
+                                name="firstName"
+                                placeholder="First Name" 
+                                required
+                                className="h-12 bg-white/80 border-gray-300 transition-transform duration-200 hover:scale-105" 
+                            />
                         </div>
                         <div>
-                            <div className="mt-10">
-                                <Input placeholder="Last Name" className="h-12 bg-white/80 border-gray-300 transition-transform duration-200 hover:scale-105" />
-                                <p className="text-sm text-gray-600 mt-1">Last Name</p>
-                            </div>
+                            <label className="block text-2xl font-bold text-gray-800 mb-2">Last Name *</label>
+                            <Input 
+                                name="lastName"
+                                placeholder="Last Name" 
+                                required
+                                className="h-12 bg-white/80 border-gray-300 transition-transform duration-200 hover:scale-105" 
+                            />
                         </div>
                     </div>
 
-                    {/* Gmail Section */}
+                    {/* Email Section */}
                     <div>
-                        <label className="block text-2xl font-bold text-gray-800 mb-2">Gmail</label>
-                        <Input placeholder="Enter your Gmail" className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" />
-                        <p className="text-sm text-gray-600 mt-1">Enter your Gmail</p>
+                        <label className="block text-2xl font-bold text-gray-800 mb-2">Email *</label>
+                        <Input 
+                            name="email"
+                            type="email"
+                            placeholder="Enter your email" 
+                            defaultValue={user?.email || ''}
+                            required
+                            className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" 
+                        />
                     </div>
 
                     {/* Phone Number Section */}
                     <div>
-                        <label className="block text-2xl font-bold text-gray-800 mb-2">Phone No</label>
-                        <Input placeholder="Enter your Phone No." className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" />
-                        <p className="text-sm text-gray-600 mt-1">Enter your Phone No.</p>
+                        <label className="block text-2xl font-bold text-gray-800 mb-2">Phone Number *</label>
+                        <Input 
+                            name="phone"
+                            type="tel"
+                            placeholder="Enter your phone number" 
+                            required
+                            className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" 
+                        />
                     </div>
 
                     {/* Number of Guests */}
                     <div>
-                        <label className="block text-2xl font-bold text-gray-800 mb-2">No of Guess</label>
-                        <Input placeholder="Enter No. of guess" className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" />
-                        <p className="text-sm text-gray-600 mt-1">Enter No. of guess</p>
+                        <label className="block text-2xl font-bold text-gray-800 mb-2">Number of Guests *</label>
+                        <Input 
+                            name="guestCount"
+                            type="number"
+                            min="1"
+                            max="20"
+                            placeholder="Enter number of guests" 
+                            required
+                            className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" 
+                        />
                     </div>
 
                     {/* Reservation Date and Time */}
@@ -108,9 +211,10 @@ export default function FoodieReservation() {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             {/* Date Section */}
                             <div>
-                                <h4 className="text-xl font-bold text-gray-800 mb-4">Date</h4>
+                                <h4 className="text-xl font-bold text-gray-800 mb-4">Date *</h4>
                                 <div className="relative">
                                     <Button
+                                        type="button"
                                         variant={"outline"}
                                         className={cn(
                                             "w-[280px] justify-start text-left font-normal",
@@ -130,6 +234,7 @@ export default function FoodieReservation() {
                                                     setDate(selectedDate);
                                                     setIsCalendarOpen(false); 
                                                 }}
+                                                disabled={(date) => date < new Date()}
                                                 initialFocus
                                             />
                                         </div>
@@ -139,9 +244,13 @@ export default function FoodieReservation() {
 
                             {/* Time Section */}
                             <div>
-                                <h4 className="text-xl font-bold text-gray-800 mb-4">Time</h4>
-                                <Input placeholder="Enter the time you will come" className="h-12 bg-white/80 border-gray-300 mb-2 transition-transform duration-200 hover:scale-105" />
-                                <p className="text-sm text-gray-600 mb-6">Enter the time you will come</p>
+                                <h4 className="text-xl font-bold text-gray-800 mb-4">Time *</h4>
+                                <Input 
+                                    name="reservationTime"
+                                    type="time"
+                                    required
+                                    className="h-12 bg-white/80 border-gray-300 mb-6 transition-transform duration-200 hover:scale-105" 
+                                />
 
                                 {/* Location Map */}
                                 <div className="mb-4 transition-transform duration-200 hover:scale-105">
@@ -153,8 +262,12 @@ export default function FoodieReservation() {
 
                                 {/* Special Notes */}
                                 <div>
-                                    <Textarea placeholder="Special Notes" className="bg-white/80 border-gray-300 h-24 transition-transform duration-200 hover:scale-105" />
-                                    <p className="text-sm text-gray-600 mt-1">Special Notes</p>
+                                    <label className="block text-lg font-bold text-gray-800 mb-2">Special Notes</label>
+                                    <Textarea 
+                                        name="specialNotes"
+                                        placeholder="Any special requests or dietary requirements..." 
+                                        className="bg-white/80 border-gray-300 h-24 transition-transform duration-200 hover:scale-105" 
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -162,13 +275,15 @@ export default function FoodieReservation() {
 
                     {/* Reserve Button */}
                     <div className="text-center pt-8 transition-transform duration-200 hover:scale-105">
-                        <Link href="/Rdone">
-                        <Button className="bg-orange-500 hover:bg-orange-600 text-white px-12 py-4 text-xl font-bold rounded-full">
-                            Reserve
+                        <Button 
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="bg-orange-500 hover:bg-orange-600 text-white px-12 py-4 text-xl font-bold rounded-full disabled:opacity-50"
+                        >
+                            {isSubmitting ? 'Creating Reservation...' : 'Reserve'}
                         </Button>
-                        </Link>
                     </div>
-                </div>
+                </form>
             </div>
 
             {/* Footer */}
