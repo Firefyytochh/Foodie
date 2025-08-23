@@ -40,8 +40,11 @@ export async function addComment(comment: string, userId: string) {
     }
 
     return { data };
-  } catch (error: any) {
-    return { error: { message: error.message } };
+  } catch (error) {
+    if (error instanceof Error) {
+        return { error: { message: error.message } };
+    }
+    return { error: { message: 'An unknown error occurred' } };
   }
 }
 
@@ -88,6 +91,7 @@ export async function getComments(limit: number = 10, offset: number = 0) {
           profiles: profile || { username: 'Anonymous User', avatar_url: null }
         });
       } catch (profileError) {
+        console.error("Failed to fetch profile for a comment:", profileError);
         // If profile fetch fails, use anonymous
         commentsWithProfiles.push({
           ...comment,
@@ -107,7 +111,7 @@ export async function getComments(limit: number = 10, offset: number = 0) {
       total: count || 0 
     };
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('🔍 Catch error:', error);
     return { 
       data: [], 

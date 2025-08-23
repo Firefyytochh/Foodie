@@ -23,6 +23,7 @@ export async function uploadProfileImage(formData: FormData, userId: string) {
     
     // Upload to Supabase Storage
     const fileName = `${userId}-${Date.now()}.${file.name.split('.').pop()}`;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data, error } = await supabaseAdmin.storage
       .from('avatars')
       .upload(fileName, file);
@@ -43,8 +44,11 @@ export async function uploadProfileImage(formData: FormData, userId: string) {
     if (updateError) return { error: updateError.message };
     
     return { success: true, url: publicUrl };
-  } catch (error: any) {
-    return { error: error.message };
+  } catch (error) {
+    if (error instanceof Error) {
+        return { error: error.message };
+    }
+    return { error: "An unknown error occurred" };
   }
 }
 
@@ -63,8 +67,11 @@ export async function getProfile(userId: string) {
     }
       
     return { data, error };
-  } catch (error: any) {
-    return { data: null, error: error.message };
+  } catch (error) {
+    if (error instanceof Error) {
+        return { data: null, error: error.message };
+    }
+    return { data: null, error: "An unknown error occurred" };
   }
 }
 
@@ -83,7 +90,10 @@ export async function updateProfile(userId: string, updates: {
     if (error) return { error: error.message };
     
     return { success: true };
-  } catch (error: any) {
-    return { error: error.message };
+  } catch (error) {
+    if (error instanceof Error) {
+        return { error: error.message };
+    }
+    return { error: "An unknown error occurred" };
   }
 }

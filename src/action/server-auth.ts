@@ -2,6 +2,20 @@
 
 import { createClient } from "@supabase/supabase-js";
 
+// Define types for user and profile
+interface UserProfile {
+    username: string;
+    avatar_url: string;
+    // Add other profile fields if any
+}
+
+interface UserWithProfile {
+    id: string;
+    email: string;
+    role: string;
+    profiles: UserProfile | null;
+}
+
 function getSupabaseAdmin() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL environment variable is required')
@@ -110,7 +124,7 @@ export async function signupUser(
     console.log('✅ User account created successfully');
     return { error: undefined, userId };
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("=== SIGNUP ERROR ===");
     console.error('Error:', error);
     return { error: "An unexpected error occurred during account creation." };
@@ -139,14 +153,14 @@ export async function deleteUser(userId: string): Promise<{
     }
 
     return {};
-  } catch (error: any) {
+  } catch (error) {
     console.error("Delete user error:", error);
     return { error: "Failed to delete user" };
   }
 }
 
 export async function getUserById(userId: string): Promise<{
-  user?: any;
+  user?: UserWithProfile | null;
   error?: string;
 }> {
   if (!userId) {
@@ -171,7 +185,7 @@ export async function getUserById(userId: string): Promise<{
     }
 
     return { user: data, error: undefined };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Get user error:", error);
     return { error: "Failed to fetch user" };
   }

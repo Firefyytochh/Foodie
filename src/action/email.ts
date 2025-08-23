@@ -4,6 +4,11 @@ import { createClient } from "@supabase/supabase-js";
 import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 
+interface NodemailerError extends Error {
+  code?: string;
+  responseCode?: number;
+}
+
 function getSupabaseAdmin() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL environment variable is required')
@@ -194,39 +199,44 @@ If you didn't request this code, please ignore this email.
       message: `Verification code sent to ${email}` 
     };
     
-  } catch (emailError: any) {
+  } catch (emailError: unknown) {
     console.error("=== EMAIL SENDING ERROR ===");
-    console.error('Error type:', emailError?.constructor?.name);
-    console.error('Error message:', emailError?.message);
-    console.error('Error code:', emailError?.code);
+    if (emailError instanceof Error) {
+        const err = emailError as NodemailerError;
+        console.error('Error type:', err.constructor.name);
+        console.error('Error message:', err.message);
+        console.error('Error code:', err.code);
+        console.error('Full error:', err);
+        
+        // Handle specific Gmail errors
+        if (err.code === 'EAUTH') {
+          return { error: "Gmail authentication failed. Please check your app password." };
+        }
+        
+        if (err.code === 'ECONNECTION') {
+          return { error: "Failed to connect to Gmail. Please check your internet connection." };
+        }
+        
+        if (err.code === 'EMESSAGE') {
+          return { error: "Invalid email message format." };
+        }
+        
+        if (err.responseCode === 550) {
+          return { error: "Invalid email address. Please check the email and try again." };
+        }
+
+        if (err.responseCode === 553) {
+          return { error: "Email rejected by recipient server." };
+        }
+
+        if (err.responseCode === 554) {
+          return { error: "Email rejected due to policy reasons." };
+        }
+        
+        return { error: `Failed to send email: ${err.message || 'Unknown error'}` };
+    }
     console.error('Full error:', emailError);
-    
-    // Handle specific Gmail errors
-    if (emailError?.code === 'EAUTH') {
-      return { error: "Gmail authentication failed. Please check your app password." };
-    }
-    
-    if (emailError?.code === 'ECONNECTION') {
-      return { error: "Failed to connect to Gmail. Please check your internet connection." };
-    }
-    
-    if (emailError?.code === 'EMESSAGE') {
-      return { error: "Invalid email message format." };
-    }
-    
-    if (emailError?.responseCode === 550) {
-      return { error: "Invalid email address. Please check the email and try again." };
-    }
-
-    if (emailError?.responseCode === 553) {
-      return { error: "Email rejected by recipient server." };
-    }
-
-    if (emailError?.responseCode === 554) {
-      return { error: "Email rejected due to policy reasons." };
-    }
-    
-    return { error: `Failed to send email: ${emailError?.message || 'Unknown error'}` };
+    return { error: 'An unknown error occurred' };
   }
 }
 
@@ -297,7 +307,7 @@ export async function verifyCode(email: string, code: string): Promise<{
     console.log('✅ Code verified successfully');
     return {};
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('Verify code error:', error);
     return { error: "Failed to verify code. Please try again." };
   }
@@ -379,7 +389,7 @@ export async function verifyCodeAndSignup(
       return { error: 'Server configuration error. Please try again.' };
     }
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('=== SIGNUP PROCESS ERROR ===');
     console.error('Error:', error);
     return { error: 'Signup process failed. Please try again.' };
@@ -435,8 +445,11 @@ export async function testEmailConfiguration(testEmail?: string): Promise<{
     transporter.close();
     return { success: true, message: 'Email configuration verified' };
     
-  } catch (error: any) {
+  } catch (error) {
     console.error('Email configuration test failed:', error);
-    return { success: false, error: error.message };
+    if (error instanceof Error) {
+        return { success: false, error: error.message };
+    }
+    return { success: false, error: "An unknown error occurred" };
   }
 }

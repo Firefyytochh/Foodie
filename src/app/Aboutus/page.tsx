@@ -1,7 +1,4 @@
 import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import Navbar from "../component/navbar";
 import { Mail, Phone } from "lucide-react";
@@ -23,7 +20,7 @@ export default function AboutPage() {
 
         <div className="space-y-6 text-gray-800 leading-relaxed">
           <p className="text-lg">
-            Welcome to Foodie, where every burger is more than just a meal—it's a moment of pure happiness. We started
+            Welcome to Foodie, where every burger is more than just a meal—it&apos;s a moment of pure happiness. We started
             Foodie with one simple mission: to serve the freshest, juiciest, and most flavorful burgers that bring
             people together.
           </p>
@@ -36,18 +33,18 @@ export default function AboutPage() {
           </p>
 
           <p className="text-lg">
-            At Foodie, variety is our flavor. Whether you're craving a classic cheeseburger, a spicy adventure, or a
-            creative twist on a favorite, we've got something for every taste. And because we care about freshness,
+            At Foodie, variety is our flavor. Whether you&apos;re craving a classic cheeseburger, a spicy adventure, or a
+            creative twist on a favorite, we&apos;ve got something for every taste. And because we care about freshness,
             every order is made hot and ready just for you—never pre-made.
           </p>
 
           <p className="text-lg">
-            We're more than a burger shop—we're a place where friends laugh, families connect, and memories are made
+            We&apos;re more than a burger shop—we&apos;re a place where friends laugh, families connect, and memories are made
             over delicious bites. From our kitchen to your table, we serve with passion, quality, and a smile.
           </p>
 
           <p className="text-lg">
-            So, whether you're dining in, taking out, or ordering online, Foodie is here to make your burger experience
+            So, whether you&apos;re dining in, taking out, or ordering online, Foodie is here to make your burger experience
             unforgettable.
           </p>
         </div>

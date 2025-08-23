@@ -1,12 +1,13 @@
 "use client";
 
 import { createClient } from "../../utils/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 // Forgot password
 export async function forgotPassword(email: string): Promise<{
   error?: string;
   success?: boolean;
-  data?: any;
+  data?: object;
 }> {
   if (!email) {
     return { error: "Email is required." };
@@ -26,8 +27,11 @@ export async function forgotPassword(email: string): Promise<{
 
     if (error) return { error: error.message };
     return { success: true, data };
-  } catch (error: any) {
-    return { error: error.message || "An unexpected error occurred." };
+  } catch (error) {
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    return { error: "An unexpected error occurred." };
   }
 }
 
@@ -48,7 +52,7 @@ export async function requestPasswordReset(email: string) {
 
 // Login function
 export async function loginUser(email: string, password: string): Promise<{
-  user?: any;
+  user?: User | null;
   error?: string;
 }> {
   if (!email || !password) {
@@ -69,7 +73,7 @@ export async function loginUser(email: string, password: string): Promise<{
     
     if (error) return { error: error.message };
     return { user: data.user };
-  } catch (err: any) {
+  } catch (err) {
     console.error("Network error:", err);
     return { error: "Network error. Check Supabase URL and CORS." };
   }
@@ -86,14 +90,17 @@ export async function logoutUser(): Promise<{
     const { error } = await supabase.auth.signOut();
     if (error) return { error: error.message };
     return { success: true };
-  } catch (error: any) {
-    return { error: error.message || "Failed to logout." };
+  } catch (error) {
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    return { error: "Failed to logout." };
   }
 }
 
 // Get current user
 export async function getCurrentUser(): Promise<{
-  user?: any;
+  user?: User | null;
   error?: string;
 }> {
   const supabase = createClient();
@@ -102,8 +109,11 @@ export async function getCurrentUser(): Promise<{
     const { data, error } = await supabase.auth.getUser();
     if (error) return { error: error.message };
     return { user: data.user };
-  } catch (error: any) {
-    return { error: error.message || "Failed to get current user." };
+  } catch (error) {
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    return { error: "Failed to get current user." };
   }
 }
 
@@ -114,7 +124,7 @@ export async function updateUserProfile(updates: {
     mobile: string; 
   } 
 }): Promise<{
-  user?: any;
+  user?: User;
   error?: string;
 }> {
   if (!updates.data.full_name && !updates.data.mobile) {
@@ -131,7 +141,10 @@ export async function updateUserProfile(updates: {
       return { error: error.message };
     }
     return { user: data.user };
-  } catch (error: any) {
-    return { error: error.message || "Failed to update profile." };
+  } catch (error) {
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    return { error: "Failed to update profile." };
   }
 }
