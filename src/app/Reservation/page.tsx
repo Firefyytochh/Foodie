@@ -1,400 +1,320 @@
-"use client"
+"use client";
 
-import { useState, useRef, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { ShoppingCart, User, Menu, Phone, Mail, MapPin, Calendar as CalendarIcon } from "lucide-react" 
-import Image from "next/image"
-import Link from "next/link"
-import { Calendar } from "@/components/ui/calendar" 
-import { format } from "date-fns" 
-import { cn } from "@/lib/utils" 
-import { createReservation } from "../../action/reservation"
-import { useRouter } from "next/navigation"
-import { createClient } from "../../../utils/supabase/client"
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { Calendar, Clock, Users, Phone, Mail, User, ShoppingCart } from "lucide-react";
+import { useRouter } from 'next/navigation';
 
-export default function FoodieReservation() {
-    const [date, setDate] = useState<Date | undefined>(new Date());
-    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [user, setUser] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const formRef = useRef<HTMLFormElement>(null);
-    const router = useRouter();
-    const supabase = createClient();
+export default function Reservation() {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    date: "",
+    time: "",
+    guests: "2"
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const router = useRouter();
 
-    // Check if user is logged in
-    useEffect(() => {
-        const checkUser = async () => {
-            try {
-                const { data: { user }, error } = await supabase.auth.getUser();
-                
-                if (error || !user) {
-                    alert('Please log in to make a reservation');
-                    router.push('/login');
-                    return;
-                }
-                
-                setUser(user);
-            } catch (error) {
-                console.error('Auth error:', error);
-                router.push('/login');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        checkUser();
-    }, [supabase.auth, router]);
-
-    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+  // Move Supabase initialization to useEffect to avoid SSR issues
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const { getCurrentUser } = await import('../../action/auth');
+        const { user: currentUser } = await getCurrentUser();
         
-        if (!user) {
-            alert('Please log in to make a reservation');
-            router.push('/login');
-            return;
+        if (currentUser) {
+          // Get user profile including avatar
+          try {
+            const { getProfile } = await import('../../action/profile');
+            const { data: profile } = await getProfile(currentUser.id);
+            
+            setUser({
+              ...currentUser,
+              avatar_url: profile?.avatar_url || null
+            });
+          } catch (error) {
+            setUser(currentUser);
+          }
+          
+          setFormData(prev => ({
+            ...prev,
+            name: currentUser.user_metadata?.full_name || "",
+            email: currentUser.email || ""
+          }));
         }
-        
-        setIsSubmitting(true);
-        
-        const formData = new FormData(event.currentTarget);
-        
-        // Add the selected date to form data
-        if (date) {
-            formData.set('reservationDate', format(date, 'yyyy-MM-dd'));
-        }
-        
-        // Pass userId as second parameter
-        const result = await createReservation(formData, user.id);
-        
-        if (result.error) {
-            alert(`Error: ${result.error.message}`);
-        } else {
-            alert('Reservation created successfully!');
-            router.push('/Rdone');
-        }
-        
-        setIsSubmitting(false);
+      } catch (error) {
+        console.error('Error checking user:', error);
+      }
     };
 
-    // Show loading while checking authentication
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="text-4xl mb-4">⏳</div>
-                    <p className="text-orange-800 text-lg">Checking authentication...</p>
-                </div>
-            </div>
-        );
+    checkUser();
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Check if user is logged in
+      if (!user) {
+        alert('Please log in to make a reservation');
+        router.push('/login');
+        return;
+      }
+
+      const { submitReservation } = await import('../../action/reservation');
+      const result = await submitReservation(formData);
+      
+      if (result.success) {
+        alert('Reservation submitted successfully!');
+        setFormData({
+          name: user?.user_metadata?.full_name || "",
+          email: user?.email || "",
+          phone: "",
+          date: "",
+          time: "",
+          guests: "2"
+        });
+      } else {
+        alert('Failed to submit reservation: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Reservation error:', error);
+      alert('Failed to submit reservation. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100">
-            <header className="sticky top-0 z-50 bg-gradient-to-r from-orange-400 to-orange-300 px-6 py-4">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center">
-                            <Image
-                                src="/logo.png"
-                                alt="Foodie Logo"
-                                width={500}
-                                height={500}
-                                className="rounded-full"
-                            />
-                        </div>
-                    </div>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-gradient-to-r from-orange-400 to-orange-300 px-6 py-4">
+  <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <Link href="/landingpage" className="flex items-center space-x-2">
+      <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center">
+        <Image src="/logo.png" alt="Foodie Logo" width={60} height={60} className="rounded-full" />
+      </div>
+      <span className="text-white text-2xl font-bold hidden sm:block">Foodie</span>
+    </Link>
 
-                    <nav className="hidden md:flex space-x-8">
-                        <Link href="/landingpage" className="text-white hover:text-orange-100 transition-colors">Home</Link>
-                        <Link href="/about" className="text-white hover:text-orange-100 transition-colors">About Us</Link>
-                        <Link href="/menu" className="text-white hover:text-orange-100 transition-colors">Menu</Link>
-                        <Link href="/contact" className="text-white hover:text-orange-100 transition-colors">Contact</Link>
-                    </nav>
+    <nav className="hidden md:flex space-x-8">
+      <Link href="/landingpage" className="text-white hover:text-orange-100 transition-colors">Home</Link>
+      <Link href="/Aboutus" className="text-white hover:text-orange-100 transition-colors">About Us</Link>
+      <Link href="/menu" className="text-white hover:text-orange-100 transition-colors">Menu</Link>
+      <Link href="/Reservation" className="text-white hover:text-orange-100 transition-colors font-bold">Reservation</Link>
+      <Link href="#footer" className="text-white hover:text-orange-100 transition-colors">Contact</Link>
+    </nav>
 
-                    <div className="flex items-center space-x-4">
-                        <Link href="/Cart">
-                            <ShoppingCart className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
-                        </Link>
-                        <Link href="/Profile">
-                            <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
-                        </Link>
-                    </div>
-                </div>
-            </header>
-
-            {/* Thank You Message */}
-            <div className="flex items-center justify-between px-6 py-8 bg-gradient-to-r from-orange-300 to-orange-200">
-                <h1 className="text-4xl font-bold text-gray-800 italic">Make Your Reservation</h1>
-                {user && (
-                    <p className="text-lg text-gray-700">Welcome, {user.email}!</p>
-                )}
-            </div>
-
-            {/* Main Content */}
-            <div className="px-6 py-8">
-                {/* Foodie Logo Section */}
-                <div className="text-center mb-12">
-                    <img src="/logo.png" alt="Foodie Logo" className="h-24 w-auto mx-auto mb-4" />
-                    <h2 className="text-4xl font-bold text-gray-800 italic mb-8">Please Enter Your Information</h2>
-                </div>
-
-                {/* Form */}
-                <form ref={formRef} onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8">
-                    {/* Name Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-2xl font-bold text-gray-800 mb-2">First Name *</label>
-                            <Input 
-                                name="firstName"
-                                placeholder="First Name" 
-                                required
-                                className="h-12 bg-white/80 border-gray-300 transition-transform duration-200 hover:scale-105" 
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-2xl font-bold text-gray-800 mb-2">Last Name *</label>
-                            <Input 
-                                name="lastName"
-                                placeholder="Last Name" 
-                                required
-                                className="h-12 bg-white/80 border-gray-300 transition-transform duration-200 hover:scale-105" 
-                            />
-                        </div>
-                    </div>
-
-                    {/* Email Section */}
-                    <div>
-                        <label className="block text-2xl font-bold text-gray-800 mb-2">Email *</label>
-                        <Input 
-                            name="email"
-                            type="email"
-                            placeholder="Enter your email" 
-                            defaultValue={user?.email || ''}
-                            required
-                            className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" 
-                        />
-                    </div>
-
-                    {/* Phone Number Section */}
-                    <div>
-                        <label className="block text-2xl font-bold text-gray-800 mb-2">Phone Number *</label>
-                        <Input 
-                            name="phone"
-                            type="tel"
-                            placeholder="Enter your phone number" 
-                            required
-                            className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" 
-                        />
-                    </div>
-
-                    {/* Number of Guests */}
-                    <div>
-                        <label className="block text-2xl font-bold text-gray-800 mb-2">Number of Guests *</label>
-                        <Input 
-                            name="guestCount"
-                            type="number"
-                            min="1"
-                            max="20"
-                            placeholder="Enter number of guests" 
-                            required
-                            className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" 
-                        />
-                    </div>
-
-                    {/* Reservation Date and Time */}
-                    <div>
-                        <h3 className="text-2xl font-bold text-gray-800 mb-6">Reservation Date and Time</h3>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* Date Section */}
-                            <div>
-                                <h4 className="text-xl font-bold text-gray-800 mb-4">Date *</h4>
-                                <div className="relative">
-                                    <Button
-                                        type="button"
-                                        variant={"outline"}
-                                        className={cn(
-                                            "w-[280px] justify-start text-left font-normal",
-                                            !date && "text-muted-foreground"
-                                        )}
-                                        onClick={() => setIsCalendarOpen(!isCalendarOpen)} 
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {date ? format(date, "PPP") : <span>Pick a date</span>}
-                                    </Button>
-                                    {isCalendarOpen && (
-                                        <div className="absolute z-10 mt-2 bg-white border border-gray-200 rounded-md shadow-lg p-0">
-                                            <Calendar
-                                                mode="single"
-                                                selected={date}
-                                                onSelect={(selectedDate) => {
-                                                    setDate(selectedDate);
-                                                    setIsCalendarOpen(false); 
-                                                }}
-                                                disabled={(date) => date < new Date()}
-                                                initialFocus
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Time Section */}
-                            <div>
-                                <h4 className="text-xl font-bold text-gray-800 mb-4">Time *</h4>
-                                <Input 
-                                    name="reservationTime"
-                                    type="time"
-                                    required
-                                    className="h-12 bg-white/80 border-gray-300 mb-6 transition-transform duration-200 hover:scale-105" 
-                                />
-
-                                {/* Location Map */}
-                                <div className="mb-4 transition-transform duration-200 hover:scale-105">
-                                    <Link href="https://www.google.com/maps/place/Phnom+Penh+location">
-                                        <img src="/location.png" alt="Location Map" className="w-32 h-24 rounded border" />
-                                        <p className="text-sm text-gray-600 mt-1">Here is the location</p>
-                                    </Link>
-                                </div>
-
-                                {/* Special Notes */}
-                                <div>
-                                    <label className="block text-lg font-bold text-gray-800 mb-2">Special Notes</label>
-                                    <Textarea 
-                                        name="specialNotes"
-                                        placeholder="Any special requests or dietary requirements..." 
-                                        className="bg-white/80 border-gray-300 h-24 transition-transform duration-200 hover:scale-105" 
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Reserve Button */}
-                    <div className="text-center pt-8 transition-transform duration-200 hover:scale-105">
-                        <Button 
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="bg-orange-500 hover:bg-orange-600 text-white px-12 py-4 text-xl font-bold rounded-full disabled:opacity-50"
-                        >
-                            {isSubmitting ? 'Creating Reservation...' : 'Reserve'}
-                        </Button>
-                    </div>
-                </form>
-            </div>
-
-            {/* Footer */}
-            <footer id="footer" className="bg-orange-800 text-white px-6 py-12">
-          <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                  <Image
-                    src="/logo.png"
-                    width={40}
-                    height={40}
-                    className="rounded-full"
-                    alt="Foodie Logo"
-                  />
-                </div>
-                <span className="text-2xl font-bold">Foodie</span>
-              </div>
-              <p className="text-orange-200 mb-4">Made by food lover for food lover</p>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-4">Useful links</h4>
-              <div className="space-y-2 text-orange-200 underline">
-                <Link href="/Aboutus">About us</Link>
-
-              </div>
-              <div className="space-y-2 text-orange-200  underline">
-
-                <Link href="/menu">Menu</Link>
-
-              </div>
-              <div className="space-y-2 text-orange-200  underline">
-
-                <Link href="/Cart">Cart</Link>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-4">Main Menu</h4>
-              <div className="space-y-2 text-orange-200  underline">
-                <Link href="/landingpage?category=burger ">Burger</Link>
-
-
-              </div>
-              <div className="space-y-2 text-orange-200  underline">
-
-                <Link href="/landingpage?category=drink">Drink</Link>
-
-              </div>
-              <div className="space-y-2 text-orange-200  underline">
-
-                <Link href="/landingpage?category=ice-cream">Ice Cream</Link>
-
-              </div>
-              <div className="space-y-2 text-orange-200  underline">
-
-                <Link href="/landingpage?category=dessert">Dessert</Link>
-
-              </div>
-            </div>
-
-  
-
-            <div>
-              <h4 className="font-bold mb-4">Contact Us</h4>
-              <div className="space-y-2 text-orange-200">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  <span>Foodieburger@gmail.com</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  <span>+855 96 55 82 129</span>
-                </div>
-                <div className="mt-4">
-                  <div className="font-bold mb-2">Social Media</div>
-                  <div className="flex gap-2">
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      <Image
-                        src="/face-book-removebg-preview.png"
-                        alt="Facebook"
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                      />
-                    </div>
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      <Image
-                        src="/instagram-removebg-preview.png"
-                        alt="Instagram"
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                      />
-                    </div>
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      <Image
-                        src="/x-removebg-preview.png"
-                        alt="X"
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </footer>
+    <div className="flex items-center space-x-4">
+      <Link href="/Cart">
+        <ShoppingCart className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
+      </Link>
+      
+      {user ? (
+        <div className="flex items-center space-x-2">
+          <Link href="/Profile">
+            {user.avatar_url ? (
+              <Image
+                src={user.avatar_url}
+                alt="Profile"
+                width={32}
+                height={32}
+                className="w-8 h-8 rounded-full object-cover border-2 border-white"
+              />
+            ) : (
+              <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
+            )}
+          </Link>
+          <button
+            onClick={() => {
+              // Add logout function
+              router.push('/login');
+            }}
+            className="text-white text-sm hover:text-orange-100 transition-colors"
+          >
+            Logout
+          </button>
         </div>
-    )
+      ) : (
+        <div className="flex items-center space-x-2">
+          <Link
+            href="/login"
+            className="text-white hover:text-orange-100 transition-colors px-3 py-1 rounded"
+          >
+            Login
+          </Link>
+          <Link
+            href="/signup"
+            className="bg-white text-orange-500 hover:bg-orange-100 transition-colors px-3 py-1 rounded font-medium"
+          >
+            Sign Up
+          </Link>
+        </div>
+      )}
+    </div>
+  </div>
+</header>
+
+      {/* Main Content */}
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        <h1 className="text-4xl md:text-5xl font-bold text-center text-black mb-12 font-serif italic">
+          Make a Reservation
+        </h1>
+
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <User className="w-4 h-4" />
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Enter your full name"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <Mail className="w-4 h-4" />
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Enter your email"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <Phone className="w-4 h-4" />
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Enter your phone number"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <Users className="w-4 h-4" />
+                  Number of Guests
+                </label>
+                <select
+                  name="guests"
+                  value={formData.guests}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                    <option key={num} value={num.toString()}>{num} {num === 1 ? 'Guest' : 'Guests'}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <Calendar className="w-4 h-4" />
+                  Date
+                </label>
+                <input
+                  type="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleInputChange}
+                  required
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <Clock className="w-4 h-4" />
+                  Time
+                </label>
+                <select
+                  name="time"
+                  value={formData.time}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="">Select time</option>
+                  <option value="11:00">11:00 AM</option>
+                  <option value="11:30">11:30 AM</option>
+                  <option value="12:00">12:00 PM</option>
+                  <option value="12:30">12:30 PM</option>
+                  <option value="13:00">1:00 PM</option>
+                  <option value="13:30">1:30 PM</option>
+                  <option value="14:00">2:00 PM</option>
+                  <option value="18:00">6:00 PM</option>
+                  <option value="18:30">6:30 PM</option>
+                  <option value="19:00">7:00 PM</option>
+                  <option value="19:30">7:30 PM</option>
+                  <option value="20:00">8:00 PM</option>
+                  <option value="20:30">8:30 PM</option>
+                  <option value="21:00">9:00 PM</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white py-4 px-6 rounded-lg font-semibold text-lg transition-colors"
+            >
+              {isSubmitting ? 'Submitting...' : 'Make Reservation'}
+            </button>
+          </form>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-orange-800 text-white px-6 py-12 mt-16" id="footer">
+        <div className="max-w-7xl mx-auto text-center">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+              <Image
+                src="/logo.png"
+                width={40}
+                height={40}
+                className="rounded-full"
+                alt="Foodie Logo"
+              />
+            </div>
+            <span className="text-2xl font-bold">Foodie</span>
+          </div>
+          <p className="text-orange-200">Made by food lover for food lover</p>
+        </div>
+      </footer>
+    </div>
+  );
 }

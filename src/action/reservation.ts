@@ -139,3 +139,54 @@ export async function getAllReservations() {
     return { data: null, error: error.message };
   }
 }
+
+export async function submitReservation(formData: {
+  name: string;
+  email: string;
+  phone: string;
+  date: string;
+  time: string;
+  guests: string;
+}) {
+  try {
+    // Get current user first
+    const { user, error: userError } = await getServerUser();
+    
+    if (userError || !user) {
+      return { success: false, error: 'You must be logged in to make a reservation' };
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+    
+    // Split name into first and last name
+    const nameParts = formData.name.trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
+    const { data, error } = await supabaseAdmin
+      .from('reservations')
+      .insert([{
+        user_id: user.id,  // Add the required user_id
+        first_name: firstName,
+        last_name: lastName,
+        email: formData.email,
+        phone: formData.phone,
+        reservation_date: formData.date,
+        reservation_time: formData.time,
+        guest_count: parseInt(formData.guests),
+        status: 'confirmed'  // Match your table default
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Reservation error:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Reservation submission failed:', error);
+    return { success: false, error: 'Failed to submit reservation' };
+  }
+}

@@ -138,8 +138,25 @@ export default function UserProfile() {
       if (result.error) {
         alert('Upload failed: ' + result.error);
       } else if (result.url) {
+        // Update avatar state immediately
         setAvatar(result.url);
-        alert('Profile image updated!');
+        
+        // Also refresh the current user data to get the updated profile
+        try {
+          const { getCurrentUser } = await import('../../action/auth');
+          const { user } = await getCurrentUser();
+          if (user) {
+            const { getProfile } = await import('../../action/profile');
+            const { data: profile } = await getProfile(user.id);
+            if (profile?.avatar_url) {
+              setAvatar(profile.avatar_url);
+            }
+          }
+        } catch (error) {
+          console.error('Error refreshing user data:', error);
+        }
+        
+        alert('Profile image updated successfully!');
       }
     } catch (error) {
       console.error('Upload error:', error);

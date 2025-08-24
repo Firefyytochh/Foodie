@@ -1,12 +1,19 @@
-import Image from "next/image"
-import Link from "next/link"
+"use client";
+
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import Navbar from "../component/navbar";
 import { Mail, Phone } from "lucide-react";
 export default function AboutPage() {
+  // Move any Supabase initialization to useEffect
+  useEffect(() => {
+    // Supabase code here if needed
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100">
       <Navbar />
-      
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-12">

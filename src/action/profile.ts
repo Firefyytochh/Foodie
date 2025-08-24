@@ -22,7 +22,6 @@ export async function uploadProfileImage(formData: FormData, userId: string) {
 
     const supabaseAdmin = getSupabaseAdmin();
     
-    // Create unique filename
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/avatar-${Date.now()}.${fileExt}`;
     
@@ -31,26 +30,26 @@ export async function uploadProfileImage(formData: FormData, userId: string) {
       .storage
       .from('avatars')
       .upload(fileName, file, {
-        upsert: true // Replace if exists
+        upsert: true
       });
 
     if (uploadError) {
       return { error: uploadError.message };
     }
 
-    // Get the public URL - THIS IS THE KEY FIX
+    // Get the PUBLIC URL - This is crucial!
     const { data: urlData } = supabaseAdmin
       .storage
       .from('avatars')
       .getPublicUrl(fileName);
 
     const publicUrl = urlData.publicUrl;
-
-    // Update user profile with the FULL PUBLIC URL
+    
+    // Update profile table with FULL URL
     const { error: updateError } = await supabaseAdmin
       .from('profiles')
       .update({ 
-        avatar_url: publicUrl  // Store full URL, not just path
+        avatar_url: publicUrl  // Store complete public URL
       })
       .eq('id', userId);
 
@@ -60,7 +59,7 @@ export async function uploadProfileImage(formData: FormData, userId: string) {
 
     return { 
       success: true, 
-      url: publicUrl  // Return full URL
+      url: publicUrl  // Return the full public URL
     };
     
   } catch (error: unknown) {
