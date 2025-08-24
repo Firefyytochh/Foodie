@@ -16,20 +16,7 @@ export const metadata: Metadata = {
   title: "Foodie Burger",
   description: "Best Burger For Your Taste - Fresh, Juicy, Unforgettable",
   icons: {
-    icon: [
-      {
-        url: "/logo.png",
-        sizes: "32x32",
-        type: "image/png",
-      },
-      {
-        url: "/logo.png",
-        sizes: "16x16",
-        type: "image/png",
-      },
-    ],
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: "/favicon.ico",
   },
 };
 
@@ -40,12 +27,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <link rel="icon" type="image/png" sizes="32x32" href="/logo.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/logo.png" />
-        <link rel="apple-touch-icon" href="/logo.png" />
-        <meta name="theme-color" content="#ea580c" />
-      </head>
       <body
         className={`${geist.variable} ${geistMono.variable} antialiased`}
       >
