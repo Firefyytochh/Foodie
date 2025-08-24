@@ -22,47 +22,58 @@ export async function uploadProfileImage(formData: FormData, userId: string) {
 
     const supabaseAdmin = getSupabaseAdmin();
     
+    // Create a clean filename
     const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/avatar-${Date.now()}.${fileExt}`;
+    const cleanFileName = `${userId}/avatar.${fileExt}`; // Simple, clean filename
     
-    // Upload to storage
+    // Delete old avatar first (optional)
+    await supabaseAdmin.storage
+      .from('avatars')
+      .remove([`${userId}/avatar.jpg`, `${userId}/avatar.png`, `${userId}/avatar.jpeg`]);
+    
+    // Upload new file
     const { data: uploadData, error: uploadError } = await supabaseAdmin
       .storage
       .from('avatars')
-      .upload(fileName, file, {
-        upsert: true
+      .upload(cleanFileName, file, {
+        upsert: true,
+        contentType: file.type
       });
 
     if (uploadError) {
+      console.error('Upload error:', uploadError);
       return { error: uploadError.message };
     }
 
-    // Get the PUBLIC URL - This is crucial!
+    // Get the public URL
     const { data: urlData } = supabaseAdmin
       .storage
       .from('avatars')
-      .getPublicUrl(fileName);
+      .getPublicUrl(cleanFileName);
 
     const publicUrl = urlData.publicUrl;
+    console.log('Generated public URL:', publicUrl);
     
-    // Update profile table with FULL URL
+    // Update profile table
     const { error: updateError } = await supabaseAdmin
       .from('profiles')
       .update({ 
-        avatar_url: publicUrl  // Store complete public URL
+        avatar_url: publicUrl
       })
       .eq('id', userId);
 
     if (updateError) {
+      console.error('Profile update error:', updateError);
       return { error: updateError.message };
     }
 
     return { 
       success: true, 
-      url: publicUrl  // Return the full public URL
+      url: publicUrl
     };
     
   } catch (error: unknown) {
+    console.error('Upload function error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return { error: errorMessage };
   }

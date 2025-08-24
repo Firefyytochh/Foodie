@@ -222,7 +222,12 @@ export default function UserProfile() {
                       height={128}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        console.log('Image failed to load:', avatar);
+                        console.log('Image load error:', e);
+                        console.log('Failed URL:', avatar);
+                        setAvatar(null); // Reset avatar on error
+                      }}
+                      onLoad={() => {
+                        console.log('Image loaded successfully:', avatar);
                       }}
                     />
                   ) : (
