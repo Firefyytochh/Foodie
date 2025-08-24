@@ -16,18 +16,8 @@ export const metadata: Metadata = {
   title: "Foodie Burger",
   description: "Best Burger For Your Taste - Fresh, Juicy, Unforgettable",
   icons: {
-    icon: [
-      {
-        url: "/logo.png",
-        sizes: "32x32",
-        type: "image/png",
-      },
-      {
-        url: "/logo.jpg",
-        sizes: "32x32",
-        type: "image/jpeg",
-      },
-    ],
+    icon: "/logo.png",
+    shortcut: "/logo.png",
     apple: "/logo.png",
   },
 };
@@ -40,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/logo.png" sizes="any" />
+        <link rel="icon" href="/logo.png" />
         <link rel="apple-touch-icon" href="/logo.png" />
         <meta name="theme-color" content="#ea580c" />
       </head>
