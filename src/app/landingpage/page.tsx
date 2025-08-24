@@ -1,17 +1,17 @@
 "use client";
 
 import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Star, ShoppingCart, User, Menu, Phone, Mail, MapPin } from 'lucide-react'
+import { Button } from "../../components/ui/button"
+import { Badge } from "../../components/ui/badge"
+import { Card, CardContent } from "../../components/ui/card"
+import { Star, ShoppingCart, User, Menu, Phone, Mail, MapPin, Edit, Trash2, Check, X } from 'lucide-react'
 import Link from "next/link"
-import { getUseCartStore } from "@/store/cart"
-import { menuItems } from "@/lib/menuData";
+import { getUseCartStore } from "../../store/cart"
+import { menuItems } from "../../lib/menuData";
 import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from 'next/navigation';
-import { addComment, getComments } from "../../action/comment"; // Adjusted path
-import { getCurrentUser, logoutUser } from "../../action/auth"; // Import auth functions
+import { addComment, getComments } from "../../action/comments"; // Fixed path
+import { getCurrentUser, logoutUser } from "../../action/auth";
 
 function LandingPageContent() {
   const useCartStore = getUseCartStore();
@@ -24,6 +24,9 @@ function LandingPageContent() {
   const [commentsOffset, setCommentsOffset] = useState(0);
   const [totalComments, setTotalComments] = useState(0);
   const [user, setUser] = useState<any>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -52,8 +55,17 @@ function LandingPageContent() {
 
       console.log('🔍 Comments fetch result:', result);
 
-      // Since we're now handling errors internally, result should always be valid
-      if (result && result.data) {
+      if (result.error) {
+        console.error('Error fetching comments:', result.error);
+        if (!loadMore) {
+          setComments([]);
+          setHasMoreComments(false);
+          setTotalComments(0);
+        }
+        return;
+      }
+
+      if (result.data) {
         console.log('🔍 Setting comments:', result.data);
 
         if (loadMore) {
@@ -64,19 +76,17 @@ function LandingPageContent() {
           setCommentsOffset(10);
         }
 
-        setHasMoreComments(result.hasMore || false);
-        setTotalComments(result.total || 0);
-      } else {
-        console.log('🔍 No data returned, setting empty array');
+        // Now these properties exist
+        setHasMoreComments(result.hasMore);
+        setTotalComments(result.total);
+      }
+    } catch (error) {
+      console.error('🔍 Failed to fetch comments:', error);
+      if (!loadMore) {
         setComments([]);
         setHasMoreComments(false);
         setTotalComments(0);
       }
-    } catch (error) {
-      console.error('🔍 Failed to fetch comments:', error);
-      setComments([]);
-      setHasMoreComments(false);
-      setTotalComments(0);
     } finally {
       setCommentsLoading(false);
     }
@@ -97,6 +107,70 @@ function LandingPageContent() {
       setActiveCategory(category);
     }
   }, [searchParams]);
+
+  const handleEditComment = (commentId: string, currentText: string) => {
+    setEditingCommentId(commentId);
+    setEditingText(currentText);
+  };
+
+  const handleSaveEdit = async (commentId: string) => {
+    if (!editingText.trim()) {
+      alert('Comment cannot be empty');
+      return;
+    }
+
+    try {
+      const { updateComment } = await import('../../action/comments');
+      const result = await updateComment(commentId, editingText, user.id);
+      
+      if (result.error) {
+        alert('Failed to update comment: ' + result.error);
+      } else {
+        // Update the comment in the local state
+        setComments(prev => prev.map(comment => 
+          comment.id === commentId 
+            ? { ...comment, comment_text: editingText, updated_at: new Date().toISOString() }
+            : comment
+        ));
+        setEditingCommentId(null);
+        setEditingText('');
+        alert('Comment updated successfully!');
+      }
+    } catch (error) {
+      alert('Failed to update comment');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditingText('');
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm('Are you sure you want to delete this comment?')) {
+      return;
+    }
+
+    setDeletingCommentId(commentId);
+    
+    try {
+      const { deleteComment } = await import('../../action/comments');
+      const result = await deleteComment(commentId, user.id);
+      
+      if (result.error) {
+        alert('Failed to delete comment: ' + result.error);
+      } else {
+        // Remove the comment from local state
+        setComments(prev => prev.filter(comment => comment.id !== commentId));
+        setTotalComments(prev => prev - 1);
+        alert('Comment deleted successfully!');
+      }
+    } catch (error) {
+      alert('Failed to delete comment');
+    } finally {
+      setDeletingCommentId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100">
@@ -455,15 +529,25 @@ function LandingPageContent() {
                     return;
                   }
 
-                  const result = await addComment(comment, user.id);
-                  if (result?.error) {
-                    alert(`Error: ${result.error.message}`);
-                  } else {
-                    formRef.current?.reset();
-                    // Reset pagination and fetch fresh comments
-                    setCommentsOffset(0);
-                    await fetchComments(false);
-                    alert('Comment posted successfully!');
+                  if (!comment.trim()) {
+                    alert('Please enter a comment');
+                    return;
+                  }
+
+                  try {
+                    const result = await addComment(comment, user.id);
+                    if (result.error) {
+                      alert(`Error: ${result.error}`);
+                    } else {
+                      formRef.current?.reset();
+                      // Reset pagination and fetch fresh comments
+                      setCommentsOffset(0);
+                      await fetchComments(false);
+                      alert('Comment posted successfully!');
+                    }
+                  } catch (error) {
+                    console.error('Submit error:', error);
+                    alert('Failed to post comment. Please try again.');
                   }
                 }}>
                   <textarea
@@ -513,38 +597,99 @@ function LandingPageContent() {
               ) : (
                 <div className="space-y-6">
                   {comments.map((comment) => (
-                    <div key={comment.id} className="bg-white rounded-lg shadow-lg p-6 transition-transform duration-200 hover:scale-[1.02]">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center flex-shrink-0">
-                          {comment.profiles?.avatar_url ? (
-                            <Image
-                              src={comment.profiles.avatar_url}
-                              alt={`${comment.profiles.username}'s avatar`}
-                              width={48}
-                              height={48}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <User className="w-6 h-6 text-gray-400" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
+                    <div key={comment.id} className="bg-white/90 backdrop-blur-sm rounded-lg p-6 shadow-md">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-orange-200">
+                            {comment.profiles?.avatar_url ? (
+                              <Image
+                                src={comment.profiles.avatar_url}
+                                alt={comment.profiles.username || 'User'}
+                                width={40}
+                                height={40}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-orange-300 flex items-center justify-center text-white font-bold">
+                                {(comment.profiles?.username || 'U').charAt(0).toUpperCase()
+                                }
+                              </div>
+                            )}
+                          </div>
+                          <div>
                             <h4 className="font-semibold text-gray-900">
                               {comment.profiles?.username || 'Anonymous User'}
                             </h4>
                             <p className="text-sm text-gray-500">
                               {new Date(comment.created_at).toLocaleDateString('en-US', {
                                 year: 'numeric',
-                                month: 'short',
+                                month: 'long',
                                 day: 'numeric',
                                 hour: '2-digit',
                                 minute: '2-digit'
                               })}
+                              {comment.updated_at && comment.updated_at !== comment.created_at && (
+                                <span className="text-gray-400 ml-2">(edited)</span>
+                              )}
                             </p>
                           </div>
-                          <p className="text-gray-800 leading-relaxed">{comment.content}</p>
                         </div>
+                        
+                        {/* Edit/Delete buttons - only show for comment owner */}
+                        {user && user.id === comment.user_id && (
+                          <div className="flex items-center space-x-2">
+                            {editingCommentId === comment.id ? (
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => handleSaveEdit(comment.id)}
+                                  className="text-green-600 hover:text-green-800 p-1"
+                                  title="Save changes"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={handleCancelEdit}
+                                  className="text-gray-600 hover:text-gray-800 p-1"
+                                  title="Cancel editing"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => handleEditComment(comment.id, comment.comment_text)}
+                                  className="text-blue-600 hover:text-blue-800 p-1"
+                                  title="Edit comment"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                  disabled={deletingCommentId === comment.id}
+                                  className="text-red-600 hover:text-red-800 p-1 disabled:opacity-50"
+                                  title="Delete comment"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="mt-3">
+                        {editingCommentId === comment.id ? (
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                            rows={3}
+                            placeholder="Edit your comment..."
+                          />
+                        ) : (
+                          <p className="text-gray-700 leading-relaxed">{comment.comment_text}</p>
+                        )}
                       </div>
                     </div>
                   ))}
