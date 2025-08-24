@@ -27,16 +27,10 @@ export async function getComments(limit: number = 10, offset: number = 0) {
       return { data: [], error: countError.message, hasMore: false, total: 0 };
     }
 
-    // Get comments
+    // Get comments with flexible column selection
     const { data, error } = await supabaseAdmin
       .from('comments')
-      .select(`
-        id,
-        user_id,
-        comment_text,
-        created_at,
-        updated_at
-      `)
+      .select('*')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -45,9 +39,10 @@ export async function getComments(limit: number = 10, offset: number = 0) {
       return { data: [], error: error.message, hasMore: false, total: 0 };
     }
 
-    // Add simple user data
+    // Handle both column names (comment_text or content)
     const enrichedData = (data || []).map(comment => ({
       ...comment,
+      comment_text: comment.comment_text || comment.content || '',
       profiles: {
         username: 'User',
         avatar_url: null
@@ -77,36 +72,54 @@ export async function addComment(commentText: string, userId: string) {
 
     const supabaseAdmin = getSupabaseAdmin();
     
+    // Simple approach - try comment_text first, then content
     const { data, error } = await supabaseAdmin
       .from('comments')
       .insert([{
         user_id: userId,
         comment_text: commentText.trim()
       }])
-      .select(`
-        id,
-        user_id,
-        comment_text,
-        created_at,
-        updated_at
-      `)
+      .select('*')
       .single();
 
     if (error) {
+      // If comment_text failed, try content column
+      if (error.message.includes('comment_text') || error.code === '42703') {
+        const { data: data2, error: error2 } = await supabaseAdmin
+          .from('comments')
+          .insert([{
+            user_id: userId,
+            content: commentText.trim()
+          }])
+          .select('*')
+          .single();
+
+        if (error2) {
+          console.error('Both comment_text and content failed:', error2);
+          return { data: null, error: error2.message };
+        }
+
+        // Return with mapped content to comment_text
+        const enrichedComment = {
+          ...data2,
+          comment_text: data2.content || '',
+          profiles: { username: 'User', avatar_url: null }
+        };
+        return { data: enrichedComment, error: null };
+      }
+      
       console.error('Add comment error:', error);
       return { data: null, error: error.message };
     }
 
-    // Return with simple profile data
+    // Success with comment_text
     const enrichedComment = {
       ...data,
-      profiles: {
-        username: 'User',
-        avatar_url: null
-      }
+      comment_text: data.comment_text || '',
+      profiles: { username: 'User', avatar_url: null }
     };
-
     return { data: enrichedComment, error: null };
+
   } catch (error: any) {
     console.error('Add comment failed:', error);
     return { data: null, error: error.message };
@@ -121,6 +134,7 @@ export async function updateComment(commentId: string, newText: string, userId: 
 
     const supabaseAdmin = getSupabaseAdmin();
     
+    // Try updating comment_text first
     const { data, error } = await supabaseAdmin
       .from('comments')
       .update({ 
@@ -129,21 +143,48 @@ export async function updateComment(commentId: string, newText: string, userId: 
       })
       .eq('id', commentId)
       .eq('user_id', userId)
-      .select(`
-        id,
-        user_id,
-        comment_text,
-        created_at,
-        updated_at
-      `)
+      .select('*')
       .single();
 
     if (error) {
+      // If comment_text failed, try content column
+      if (error.message.includes('comment_text') || error.code === '42703') {
+        const { data: data2, error: error2 } = await supabaseAdmin
+          .from('comments')
+          .update({ 
+            content: newText.trim(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', commentId)
+          .eq('user_id', userId)
+          .select('*')
+          .single();
+
+        if (error2) {
+          console.error('Update with content failed:', error2);
+          return { data: null, error: error2.message };
+        }
+
+        return { 
+          data: {
+            ...data2,
+            comment_text: data2.content || ''
+          }, 
+          error: null 
+        };
+      }
+      
       console.error('Update comment error:', error);
       return { data: null, error: error.message };
     }
 
-    return { data, error: null };
+    return { 
+      data: {
+        ...data,
+        comment_text: data.comment_text || ''
+      }, 
+      error: null 
+    };
   } catch (error: any) {
     console.error('Update comment failed:', error);
     return { data: null, error: error.message };
@@ -161,13 +202,11 @@ export async function deleteComment(commentId: string, userId: string) {
       .eq('user_id', userId);
 
     if (error) {
-      console.error('Delete comment error:', error);
       return { error: error.message };
     }
 
     return { success: true };
   } catch (error: any) {
-    console.error('Delete comment failed:', error);
     return { error: error.message };
   }
 }
