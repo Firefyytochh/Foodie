@@ -27,7 +27,7 @@ export async function getComments(limit: number = 10, offset: number = 0) {
       return { data: [], error: countError.message, hasMore: false, total: 0 };
     }
 
-    // Get comments with flexible column selection
+    // Get comments
     const { data, error } = await supabaseAdmin
       .from('comments')
       .select('*')
@@ -39,15 +39,57 @@ export async function getComments(limit: number = 10, offset: number = 0) {
       return { data: [], error: error.message, hasMore: false, total: 0 };
     }
 
-    // Handle both column names (comment_text or content)
-    const enrichedData = (data || []).map(comment => ({
-      ...comment,
-      comment_text: comment.comment_text || comment.content || '',
-      profiles: {
-        username: 'User',
-        avatar_url: null
-      }
-    }));
+    // Get real user data for each comment
+    const enrichedData = await Promise.all(
+      (data || []).map(async (comment) => {
+        try {
+          // Get user data from auth.users
+          const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(comment.user_id);
+          
+          // Get profile data from profiles table
+          const { data: profile, error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('id', comment.user_id)
+            .single();
+
+          // Extract real user information
+          const userEmail = userData?.user?.email || '';
+          const userMetadata = userData?.user?.user_metadata || {};
+          
+          const username = profile?.username || 
+                          userMetadata?.full_name || 
+                          userMetadata?.name ||
+                          userEmail.split('@')[0] || 
+                          'Anonymous User';
+
+          const avatar_url = profile?.avatar_url || 
+                            userMetadata?.avatar_url || 
+                            userMetadata?.picture ||
+                            null;
+
+          return {
+            ...comment,
+            comment_text: comment.comment_text || comment.content || '',
+            profiles: {
+              username,
+              avatar_url
+            }
+          };
+        } catch (enrichError) {
+          console.error('Error getting user data for comment:', comment.id, enrichError);
+          // Fallback to basic info
+          return {
+            ...comment,
+            comment_text: comment.comment_text || comment.content || '',
+            profiles: {
+              username: 'Anonymous User',
+              avatar_url: null
+            }
+          };
+        }
+      })
+    );
 
     const totalComments = count || 0;
     const hasMore = (offset + limit) < totalComments;
@@ -72,7 +114,7 @@ export async function addComment(commentText: string, userId: string) {
 
     const supabaseAdmin = getSupabaseAdmin();
     
-    // Simple approach - try comment_text first, then content
+    // Try comment_text first, then content
     const { data, error } = await supabaseAdmin
       .from('comments')
       .insert([{
@@ -99,26 +141,86 @@ export async function addComment(commentText: string, userId: string) {
           return { data: null, error: error2.message };
         }
 
-        // Return with mapped content to comment_text
-        const enrichedComment = {
-          ...data2,
-          comment_text: data2.content || '',
-          profiles: { username: 'User', avatar_url: null }
-        };
-        return { data: enrichedComment, error: null };
+        // Get real user data for the new comment
+        try {
+          const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+          const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('id', userId)
+            .single();
+
+          const userEmail = userData?.user?.email || '';
+          const userMetadata = userData?.user?.user_metadata || {};
+          
+          const username = profile?.username || 
+                          userMetadata?.full_name || 
+                          userMetadata?.name ||
+                          userEmail.split('@')[0] || 
+                          'Anonymous User';
+
+          const avatar_url = profile?.avatar_url || 
+                            userMetadata?.avatar_url || 
+                            userMetadata?.picture ||
+                            null;
+
+          const enrichedComment = {
+            ...data2,
+            comment_text: data2.content || '',
+            profiles: { username, avatar_url }
+          };
+          return { data: enrichedComment, error: null };
+        } catch (enrichError) {
+          const enrichedComment = {
+            ...data2,
+            comment_text: data2.content || '',
+            profiles: { username: 'Anonymous User', avatar_url: null }
+          };
+          return { data: enrichedComment, error: null };
+        }
       }
       
       console.error('Add comment error:', error);
       return { data: null, error: error.message };
     }
 
-    // Success with comment_text
-    const enrichedComment = {
-      ...data,
-      comment_text: data.comment_text || '',
-      profiles: { username: 'User', avatar_url: null }
-    };
-    return { data: enrichedComment, error: null };
+    // Success with comment_text - get real user data
+    try {
+      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('username, avatar_url')
+        .eq('id', userId)
+        .single();
+
+      const userEmail = userData?.user?.email || '';
+      const userMetadata = userData?.user?.user_metadata || {};
+      
+      const username = profile?.username || 
+                      userMetadata?.full_name || 
+                      userMetadata?.name ||
+                      userEmail.split('@')[0] || 
+                      'Anonymous User';
+
+      const avatar_url = profile?.avatar_url || 
+                        userMetadata?.avatar_url || 
+                        userMetadata?.picture ||
+                        null;
+
+      const enrichedComment = {
+        ...data,
+        comment_text: data.comment_text || '',
+        profiles: { username, avatar_url }
+      };
+      return { data: enrichedComment, error: null };
+    } catch (enrichError) {
+      const enrichedComment = {
+        ...data,
+        comment_text: data.comment_text || '',
+        profiles: { username: 'Anonymous User', avatar_url: null }
+      };
+      return { data: enrichedComment, error: null };
+    }
 
   } catch (error: any) {
     console.error('Add comment failed:', error);
