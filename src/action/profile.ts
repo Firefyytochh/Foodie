@@ -16,39 +16,56 @@ function getSupabaseAdmin() {
 export async function uploadProfileImage(formData: FormData, userId: string) {
   try {
     const file = formData.get('avatar') as File;
-    
-    if (!file) return { error: 'No file selected' };
-    
+    if (!file) {
+      return { error: 'No file provided' };
+    }
+
     const supabaseAdmin = getSupabaseAdmin();
     
-    // Upload to Supabase Storage
-    const fileName = `${userId}-${Date.now()}.${file.name.split('.').pop()}`;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { data, error } = await supabaseAdmin.storage
-      .from('avatars')
-      .upload(fileName, file);
-      
-    if (error) return { error: error.message };
+    // Create unique filename
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/avatar-${Date.now()}.${fileExt}`;
     
-    // Get public URL
-    const { data: { publicUrl } } = supabaseAdmin.storage
+    // Upload to storage
+    const { data: uploadData, error: uploadError } = await supabaseAdmin
+      .storage
+      .from('avatars')
+      .upload(fileName, file, {
+        upsert: true // Replace if exists
+      });
+
+    if (uploadError) {
+      return { error: uploadError.message };
+    }
+
+    // Get the public URL - THIS IS THE KEY FIX
+    const { data: urlData } = supabaseAdmin
+      .storage
       .from('avatars')
       .getPublicUrl(fileName);
-      
-    // Update profile
+
+    const publicUrl = urlData.publicUrl;
+
+    // Update user profile with the FULL PUBLIC URL
     const { error: updateError } = await supabaseAdmin
       .from('profiles')
-      .update({ avatar_url: publicUrl })
+      .update({ 
+        avatar_url: publicUrl  // Store full URL, not just path
+      })
       .eq('id', userId);
-      
-    if (updateError) return { error: updateError.message };
-    
-    return { success: true, url: publicUrl };
-  } catch (error) {
-    if (error instanceof Error) {
-        return { error: error.message };
+
+    if (updateError) {
+      return { error: updateError.message };
     }
-    return { error: "An unknown error occurred" };
+
+    return { 
+      success: true, 
+      url: publicUrl  // Return full URL
+    };
+    
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return { error: errorMessage };
   }
 }
 

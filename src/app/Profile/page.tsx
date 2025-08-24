@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Card } from "../../components/ui/card";
 import { Edit3, ShoppingCart, User, Mail, Phone } from "lucide-react";
-import { getCurrentUser, updateUserProfile } from "@/action/auth";
+import { getCurrentUser, updateUserProfile } from "../../action/auth";
 import { useRouter } from 'next/navigation';
 
 export default function UserProfile() {
@@ -26,7 +26,6 @@ export default function UserProfile() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const { getCurrentUser } = await import('../../action/auth');
         const { user, error } = await getCurrentUser();
         
         if (error || !user) {
@@ -35,33 +34,24 @@ export default function UserProfile() {
         }
 
         if (user) {
-          console.log('🔍 User ID:', user.id); // Debug
           setCurrentUser(user);
           
-          // Fetch profile data
           try {
             const { getProfile } = await import('../../action/profile');
             const { data: profile, error: profileError } = await getProfile(user.id);
             
-            console.log('🔍 Profile data:', profile); // Debug
-            console.log('🔍 Profile error:', profileError); // Debug
-            
             if (profile && profile.avatar_url) {
-              console.log('🔍 Setting avatar to:', profile.avatar_url); // Debug
               setAvatar(profile.avatar_url);
-            } else {
-              console.log('🔍 No avatar_url found in profile'); // Debug
             }
             
             setUserData(prev => ({
               ...prev,
               email: user.email || prev.email,
-              name: profile?.username || prev.name,     // Use optional chaining
-              mobile: profile?.phone_number || prev.mobile  // Use optional chaining
+              name: profile?.username || prev.name,
+              mobile: profile?.phone_number || prev.mobile
             }));
             
             if (!profile) {
-              // Create initial profile for new users
               const { updateProfile } = await import('../../action/profile');
               await updateProfile(user.id, {
                 username: user.user_metadata?.full_name || "Your name",
@@ -80,6 +70,12 @@ export default function UserProfile() {
     fetchUser();
   }, [router]);
 
+  useEffect(() => {
+    if (avatar) {
+      console.log('Avatar URL:', avatar);
+    }
+  }, [avatar]);
+
   const handleChange = (field: string, value: string) => {
     setUserData(prev => ({ ...prev, [field]: value }));
   };
@@ -89,23 +85,20 @@ export default function UserProfile() {
     
     try {
       if (currentUser) {
-        // Update auth metadata - map name to full_name and mobile to phone in metadata
         const authResult = await updateUserProfile({
           data: {
-            full_name: userData.mobile, // Store phone number in full_name metadata
-            mobile: userData.mobile     // Also keep in mobile for compatibility
+            full_name: userData.name,
+            mobile: userData.mobile
           }
         });
 
-        // Update the profiles table - store name in username and mobile in phone_number
         const { updateProfile } = await import('../../action/profile');
         const profileResult = await updateProfile(currentUser.id, {
           username: userData.name,
-          phone_number: userData.mobile  // Changed from 'phone' to 'phone_number'
+          phone_number: userData.mobile
         });
 
         if (authResult.error || profileResult.error) {
-          console.error("Error updating profile:", authResult.error || profileResult.error);
           alert("Failed to save changes.");
         } else {
           alert("Profile updated successfully!");
@@ -124,13 +117,12 @@ export default function UserProfile() {
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
     
-    // Validate file type and size
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file');
       return;
     }
     
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > 5 * 1024 * 1024) {
       alert('File size must be less than 5MB');
       return;
     }
@@ -164,7 +156,6 @@ export default function UserProfile() {
       router.push('/login');
     } catch (error) {
       console.error('Logout error:', error);
-      // Still redirect even if logout fails
       router.push('/login');
     }
   };
@@ -213,6 +204,9 @@ export default function UserProfile() {
                       width={128}
                       height={128}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.log('Image failed to load:', avatar);
+                      }}
                     />
                   ) : (
                     <User className="w-16 h-16 text-gray-400" />
@@ -324,125 +318,101 @@ export default function UserProfile() {
               </div>
             </div>
           </Card>
-            <Button
-              onClick={handleLogout}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 text-lg font-semibold rounded-full shadow-lg transition-all duration-200 hover:shadow-xl"
-            >
-              Log out
-            </Button>
+          
+          <Button
+            onClick={handleLogout}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 text-lg font-semibold rounded-full shadow-lg transition-all duration-200 hover:shadow-xl"
+          >
+            Log out
+          </Button>
         </div>
       </main>
 
       {/* Footer */}
-     {/* Footer */}
-           <footer id="footer" className="bg-orange-800 text-white px-6 py-12">
-          <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                  <Image
-                    src="/logo.png"
-                    width={40}
-                    height={40}
-                    className="rounded-full"
-                    alt="Foodie Logo"
-                  />
-                </div>
-                <span className="text-2xl font-bold">Foodie</span>
+      <footer id="footer" className="bg-orange-800 text-white px-6 py-12">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                <Image
+                  src="/logo.png"
+                  width={40}
+                  height={40}
+                  className="rounded-full"
+                  alt="Foodie Logo"
+                />
               </div>
-              <p className="text-orange-200 mb-4">Made by food lover for food lover</p>
+              <span className="text-2xl font-bold">Foodie</span>
             </div>
+            <p className="text-orange-200 mb-4">Made by food lover for food lover</p>
+          </div>
 
-            <div>
-              <h4 className="font-bold mb-4">Useful links</h4>
-              <div className="space-y-2 text-orange-200 underline">
-                <Link href="/Aboutus">About us</Link>
-
-              </div>
-              <div className="space-y-2 text-orange-200  underline">
-
-                <Link href="/menu">Menu</Link>
-
-              </div>
-              <div className="space-y-2 text-orange-200  underline">
-
-                <Link href="/Cart">Cart</Link>
-              </div>
+          <div>
+            <h4 className="font-bold mb-4">Useful links</h4>
+            <div className="space-y-2">
+              <Link href="/Aboutus" className="block text-orange-200 underline">About us</Link>
+              <Link href="/menu" className="block text-orange-200 underline">Menu</Link>
+              <Link href="/Cart" className="block text-orange-200 underline">Cart</Link>
             </div>
+          </div>
 
-            <div>
-              <h4 className="font-bold mb-4">Main Menu</h4>
-              <div className="space-y-2 text-orange-200  underline">
-                <Link href="/landingpage?category=burger ">Burger</Link>
-
-
-              </div>
-              <div className="space-y-2 text-orange-200  underline">
-
-                <Link href="/landingpage?category=drink">Drink</Link>
-
-              </div>
-              <div className="space-y-2 text-orange-200  underline">
-
-                <Link href="/landingpage?category=ice-cream">Ice Cream</Link>
-
-              </div>
-              <div className="space-y-2 text-orange-200  underline">
-
-                <Link href="/landingpage?category=dessert">Dessert</Link>
-
-              </div>
+          <div>
+            <h4 className="font-bold mb-4">Main Menu</h4>
+            <div className="space-y-2">
+              <Link href="/landingpage?category=burger" className="block text-orange-200 underline">Burger</Link>
+              <Link href="/landingpage?category=drink" className="block text-orange-200 underline">Drink</Link>
+              <Link href="/landingpage?category=ice-cream" className="block text-orange-200 underline">Ice Cream</Link>
+              <Link href="/landingpage?category=dessert" className="block text-orange-200 underline">Dessert</Link>
             </div>
+          </div>
 
-  
-
-            <div>
-              <h4 className="font-bold mb-4">Contact Us</h4>
-              <div className="space-y-2 text-orange-200">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  <span>Foodieburger@gmail.com</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  <span>+855 96 55 82 129</span>
-                </div>
-                <div className="mt-4">
-                  <div className="font-bold mb-2">Social Media</div>
-                  <div className="flex gap-2">
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      <Image
-                        src="/face-book-removebg-preview.png"
-                        alt="Facebook"
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                      />
-                    </div>
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      <Image
-                        src="/instagram-removebg-preview.png"
-                        alt="Instagram"
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                      />
-                    </div>
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      <Image
-                        src="/x-removebg-preview.png"
-                        alt="X"
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                      />
-                    </div>
+          <div>
+            <h4 className="font-bold mb-4">Contact Us</h4>
+            <div className="space-y-2 text-orange-200">
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                <span>Foodieburger@gmail.com</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="w-4 h-4" />
+                <span>+855 96 55 82 129</span>
+              </div>
+              <div className="mt-4">
+                <div className="font-bold mb-2">Social Media</div>
+                <div className="flex gap-2">
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                    <Image
+                      src="/face-book-removebg-preview.png"
+                      alt="Facebook"
+                      width={32}
+                      height={32}
+                      className="rounded-full"
+                    />
+                  </div>
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                    <Image
+                      src="/instagram-removebg-preview.png"
+                      alt="Instagram"
+                      width={32}
+                      height={32}
+                      className="rounded-full"
+                    />
+                  </div>
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                    <Image
+                      src="/x-removebg-preview.png"
+                      alt="X"
+                      width={32}
+                      height={32}
+                      className="rounded-full"
+                    />
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </footer>
+        </div>
+      </footer>
     </div>
   );
 }
