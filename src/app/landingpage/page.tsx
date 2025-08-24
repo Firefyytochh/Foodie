@@ -150,7 +150,7 @@ export default function FoodieWebsite() {
                   <Button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md">Login</Button>
                 </Link>
                 <Link href="/Signup">
-                  <Button variant="outline" className="border-orange-500 text-white hover:bg-white hover:text-orange-500 px-4 py-2 rounded-md">Sign Up</Button>
+                  <Button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md">Sign Up</Button>
                 </Link>
               </>
             )}
