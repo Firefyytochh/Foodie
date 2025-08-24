@@ -214,7 +214,7 @@ export default function UserProfile() {
             <div className="flex flex-col items-center space-y-4">
               <div className="relative">
                 <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
-                  {avatar ? (
+                  {avatar && !avatar.includes('-175') ? (
                     <Image
                       src={avatar}
                       alt="Profile"
@@ -222,16 +222,14 @@ export default function UserProfile() {
                       height={128}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        console.log('Image load error:', e);
-                        console.log('Failed URL:', avatar);
-                        setAvatar(null); // Reset avatar on error
-                      }}
-                      onLoad={() => {
-                        console.log('Image loaded successfully:', avatar);
+                        console.log('Image load error, using default');
+                        setAvatar(null); // Reset to default
                       }}
                     />
                   ) : (
-                    <User className="w-16 h-16 text-gray-400" />
+                    <div className="w-full h-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+                      <User className="w-16 h-16 text-white" />
+                    </div>
                   )}
                 </div>
                 <label className="absolute bottom-0 right-0 bg-orange-500 text-white p-2 rounded-full cursor-pointer hover:bg-orange-600 transition-colors">

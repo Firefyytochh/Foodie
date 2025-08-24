@@ -20,24 +20,35 @@ export async function uploadProfileImage(formData: FormData, userId: string) {
       return { error: 'No file provided' };
     }
 
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      return { error: 'File must be an image' };
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return { error: 'File must be less than 5MB' };
+    }
+
     const supabaseAdmin = getSupabaseAdmin();
     
-    // Create a clean filename
-    const fileExt = file.name.split('.').pop();
-    const cleanFileName = `${userId}/avatar.${fileExt}`; // Simple, clean filename
+    // Create simple filename
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const fileName = `${userId}.${fileExt}`;
     
-    // Delete old avatar first (optional)
+    console.log('Uploading file:', fileName);
+    
+    // Remove old file first
     await supabaseAdmin.storage
       .from('avatars')
-      .remove([`${userId}/avatar.jpg`, `${userId}/avatar.png`, `${userId}/avatar.jpeg`]);
+      .remove([fileName]);
     
     // Upload new file
-    const { data: uploadData, error: uploadError } = await supabaseAdmin
+    const { data, error: uploadError } = await supabaseAdmin
       .storage
       .from('avatars')
-      .upload(cleanFileName, file, {
-        upsert: true,
-        contentType: file.type
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: true
       });
 
     if (uploadError) {
@@ -45,21 +56,19 @@ export async function uploadProfileImage(formData: FormData, userId: string) {
       return { error: uploadError.message };
     }
 
-    // Get the public URL
+    // Get public URL
     const { data: urlData } = supabaseAdmin
       .storage
       .from('avatars')
-      .getPublicUrl(cleanFileName);
+      .getPublicUrl(fileName);
 
     const publicUrl = urlData.publicUrl;
-    console.log('Generated public URL:', publicUrl);
+    console.log('Public URL:', publicUrl);
     
-    // Update profile table
+    // Update profile
     const { error: updateError } = await supabaseAdmin
       .from('profiles')
-      .update({ 
-        avatar_url: publicUrl
-      })
+      .update({ avatar_url: publicUrl })
       .eq('id', userId);
 
     if (updateError) {
@@ -67,15 +76,11 @@ export async function uploadProfileImage(formData: FormData, userId: string) {
       return { error: updateError.message };
     }
 
-    return { 
-      success: true, 
-      url: publicUrl
-    };
+    return { success: true, url: publicUrl };
     
-  } catch (error: unknown) {
-    console.error('Upload function error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return { error: errorMessage };
+  } catch (error) {
+    console.error('Upload failed:', error);
+    return { error: 'Upload failed' };
   }
 }
 
