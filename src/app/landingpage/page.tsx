@@ -1,4 +1,5 @@
 "use client";
+
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -7,13 +8,12 @@ import { Star, ShoppingCart, User, Menu, Phone, Mail, MapPin } from 'lucide-reac
 import Link from "next/link"
 import { getUseCartStore } from "@/store/cart"
 import { menuItems } from "@/lib/menuData";
-import { useState, useEffect, useRef } from "react"
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from "react"
+import { useRouter, useSearchParams } from 'next/navigation';
 import { addComment, getComments } from "../../action/comment"; // Adjusted path
 import { getCurrentUser, logoutUser } from "../../action/auth"; // Import auth functions
-import { useRouter } from 'next/navigation';
 
-export default function FoodieWebsite() {
+function LandingPageContent() {
   const useCartStore = getUseCartStore();
   const { addToCart, cartItemCount } = useCartStore();
   const [activeCategory, setActiveCategory] = useState("burger");
@@ -25,6 +25,7 @@ export default function FoodieWebsite() {
   const [totalComments, setTotalComments] = useState(0);
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -89,13 +90,6 @@ export default function FoodieWebsite() {
   useEffect(() => {
     fetchComments(); // Load initial comments
   }, []);
-  const searchParams = useSearchParams();
-
-  const featuredItems = [
-    menuItems.find(item => item.id === "cheese-burger"),
-    menuItems.find(item => item.id === "strawberry-ice-cream"),
-    menuItems.find(item => item.id === "chicken-burger"),
-  ].filter(Boolean); // Filter out any undefined items if not found
 
   useEffect(() => {
     const category = searchParams.get('category');
@@ -103,6 +97,7 @@ export default function FoodieWebsite() {
       setActiveCategory(category);
     }
   }, [searchParams]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100">
       <header className="sticky top-0 z-50 bg-gradient-to-r from-orange-400 to-orange-300 px-6 py-4">
@@ -693,4 +688,19 @@ export default function FoodieWebsite() {
       </main>
     </div>
   )
+}
+
+export default function FoodieWebsite() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <LandingPageContent />
+    </Suspense>
+  );
 }

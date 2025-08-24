@@ -1,14 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "../../../utils/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
+import { createBrowserClient } from '@supabase/ssr';
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("Loading...");
@@ -16,7 +12,12 @@ export default function ResetPasswordPage() {
   const [canReset, setCanReset] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
+  
+  // Fix: Add environment variables as parameters
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -32,8 +33,7 @@ export default function ResetPasswordPage() {
         setCanReset(true);
         setMessage("Ready to reset your password");
       } else {
-        setCanReset(false);
-        setMessage("Please click the password reset link in your email again");
+        setMessage("Please click the reset link in your email first");
       }
     };
 
@@ -66,13 +66,14 @@ export default function ResetPasswordPage() {
       if (error) {
         setMessage(`Error: ${error.message}`);
       } else {
-        setMessage("Password updated successfully! Redirecting...");
+        setMessage("Password updated successfully! Redirecting to login...");
         setTimeout(() => {
           router.push("/login");
         }, 2000);
       }
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      setMessage(`Error: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -81,74 +82,65 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-orange-50 to-white">
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
-        <div className="text-center mb-8">
-          <div className="w-28 h-28 mx-auto mb-4 relative">
-            <div className="w-full h-full bg-white rounded-full flex items-center justify-center shadow-lg">
-              <Image
-                src="/logo.png"
-                alt="Foodie Logo"
-                width={120}
-                height={120}
-                className="rounded-full"
+        <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-lg">
+          <h1 className="text-2xl font-bold text-center mb-6">Reset Password</h1>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                New Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="Enter new password"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Confirm Password
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="Confirm new password"
+              />
+            </div>
+
+            <button
+              onClick={handleResetPassword}
+              disabled={isLoading || !canReset}
+              className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white py-2 px-4 rounded-md transition-colors"
+            >
+              {isLoading ? "Updating..." : "Update Password"}
+            </button>
+
+            <p className="text-center text-sm text-gray-600">{message}</p>
           </div>
-          <h1
-            className="text-4xl font-bold text-red-600 mb-1"
-            style={{ fontFamily: "serif" }}
-          >
-            Foodie
-          </h1>
-          <h2
-            className="text-4xl font-bold text-gray-800 mb-2"
-            style={{ fontFamily: "serif", fontStyle: "italic" }}
-          >
-            Reset Password
-          </h2>
-        </div>
-
-        <div className="w-full max-w-md space-y-4">
-          <Input
-            type="password"
-            placeholder="New password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={!canReset}
-            className="w-full px-6 py-4 text-lg bg-white/90 backdrop-blur-sm border-0 rounded-full shadow-lg placeholder:text-gray-500 focus:ring-2 focus:ring-orange-400"
-          />
-          <Input
-            type="password"
-            placeholder="Confirm new password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            disabled={!canReset}
-            className="w-full px-6 py-4 text-lg bg-white/90 backdrop-blur-sm border-0 rounded-full shadow-lg placeholder:text-gray-500 focus:ring-2 focus:ring-orange-400"
-          />
-          <Button
-            onClick={handleResetPassword}
-            disabled={isLoading || !canReset}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 text-lg font-semibold rounded-full shadow-lg disabled:opacity-50"
-          >
-            {isLoading ? "Resetting..." : "Reset Password"}
-          </Button>
-
-          <p
-            className={`text-center ${
-              message.includes("successfully") || message.includes("Ready")
-                ? "text-green-600"
-                : "text-red-500"
-            }`}
-          >
-            {message}
-          </p>
-
-          <Link href="/login">
-            <Button className="w-full bg-gray-200 text-gray-800 py-3 font-semibold rounded-full shadow-lg hover:bg-gray-300">
-              Back to Login
-            </Button>
-          </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500"></div>
+            <p className="mt-4 text-gray-600">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
