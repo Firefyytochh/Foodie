@@ -42,11 +42,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-black/20" />
       </div>
 
-      <div className="absolute top-6 right-6 z-10">
-        <Button className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-2xl font-medium text-lg shadow-lg">
-          Admin
-        </Button>
-      </div>
+      
 
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
         <div className="text-center mb-8">
