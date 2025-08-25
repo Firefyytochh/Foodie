@@ -63,10 +63,18 @@ export async function getComments(limit: number = 10, offset: number = 0) {
                           userEmail.split('@')[0] || 
                           'Anonymous User';
 
-          const avatar_url = profile?.avatar_url || 
-                            userMetadata?.avatar_url || 
-                            userMetadata?.picture ||
-                            null;
+          // Fix avatar_url handling - construct proper Supabase storage URL
+          let avatar_url = null;
+          if (profile?.avatar_url) {
+            // If avatar_url is just a file path, construct full Supabase URL
+            if (!profile.avatar_url.startsWith('http')) {
+              avatar_url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}`;
+            } else {
+              avatar_url = profile.avatar_url;
+            }
+          } else if (userMetadata?.avatar_url || userMetadata?.picture) {
+            avatar_url = userMetadata.avatar_url || userMetadata.picture;
+          }
 
           return {
             ...comment,
