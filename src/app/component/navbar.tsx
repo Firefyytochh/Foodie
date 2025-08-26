@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Star, ShoppingCart, User, Menu, Phone, Mail, MapPin } from 'lucide-react';
+import { ShoppingCart, User } from 'lucide-react';
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge"; // Added
@@ -10,8 +10,12 @@ import { getCurrentUser, logoutUser } from '../../action/auth'; // Corrected pat
 import { useRouter } from 'next/navigation';
 import { getUseCartStore } from "@/store/cart"; // Added
 
+interface User {
+  id: string;
+}
+
 export default function Navbar() { // Renamed component for clarity
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const useCartStore = getUseCartStore(); // Added
   const { cartItemCount } = useCartStore(); // Added

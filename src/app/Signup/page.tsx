@@ -66,9 +66,9 @@ export default function SignUpPage() {
     setMessage("");
     
     try {
-      const { error } = await verifyCode(email, verificationCode);
-      if (error) {
-        setMessage(error);
+      const { error: _error } = await verifyCode(email, verificationCode);
+      if (_error) {
+        setMessage(_error);
       } else {
         setIsVerified(true);
         setMessage("Email verified successfully!");
@@ -197,7 +197,7 @@ export default function SignUpPage() {
                 }}
                 className="text-orange-500 underline text-sm"
               >
-                Didn't receive the code? Send again
+                Didn&apos;t receive the code? Send again
               </button>
             </div>
           )}

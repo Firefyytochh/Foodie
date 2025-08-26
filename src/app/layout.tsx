@@ -1,6 +1,17 @@
+"use client";
+
 import type { Metadata } from "next";
+
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { SessionContextProvider } from "@supabase/auth-helpers-react";
+import { createClient } from "@supabase/supabase-js";
+import React from "react";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 const geist = Geist({
   variable: "--font-geist-sans",
@@ -12,13 +23,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Foodie Burger",
-  description: "Best Burger For Your Taste - Fresh, Juicy, Unforgettable",
-  icons: {
-    icon: "/favicon.ico",
-  },
-};
+
 
 export default function RootLayout({
   children,
@@ -30,7 +35,9 @@ export default function RootLayout({
       <body
         className={`${geist.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <SessionContextProvider supabaseClient={supabase}>
+          {children}
+        </SessionContextProvider>
       </body>
     </html>
   );

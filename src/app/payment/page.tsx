@@ -12,8 +12,15 @@ import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getUseCartStore } from "@/store/cart"
 import { createPayment } from "@/action/payment"
-import { createClient } from "@supabase/supabase-js"
+import { placeOrder } from "@/action/order";
+import { createClient } from '@supabase/supabase-js';
 import { useRouter } from "next/navigation"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
 
 export default function CheckoutPage() {
     const useCartStore = getUseCartStore();
@@ -29,10 +36,6 @@ export default function CheckoutPage() {
     const [loading, setLoading] = useState(true);
     const formRef = useRef<HTMLFormElement>(null);
     const router = useRouter();
-   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
     // Get user on component mount
     useEffect(() => {
@@ -117,6 +120,23 @@ export default function CheckoutPage() {
         if (result.error) {
             alert(`Payment failed: ${result.error.message}`);
         } else {
+            // --- ADD THIS: Save order to database ---
+            const orderData = {
+                user_id: user.id,
+                items: items,
+                total: finalTotal,
+                status: "pending",
+                customer_phone: customerPhone,
+                customer_location: customerLocation,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            const orderResult = await placeOrder(orderData);
+            if (!orderResult.success) {
+                alert("Order upload failed: " + orderResult.error);
+            }
+            // --- END ADD ---
+
             alert('Payment successful!');
             clearCart();
             router.push('/Paymentdone');

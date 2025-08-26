@@ -43,7 +43,7 @@ export async function uploadProfileImage(formData: FormData, userId: string) {
       .remove([fileName]);
     
     // Upload new file
-    const { data, error: uploadError } = await supabaseAdmin
+    const { error: uploadError } = await supabaseAdmin
       .storage
       .from('avatars')
       .upload(fileName, file, {

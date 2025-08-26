@@ -4,7 +4,7 @@ import Image from "next/image"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
 import { Card, CardContent } from "../../components/ui/card"
-import { Star, ShoppingCart, User, Menu, Phone, Mail, MapPin, Edit, Trash2, Check, X } from 'lucide-react'
+import { Star, ShoppingCart, User, Menu, Phone, Mail, Edit, Trash2, Check, X } from 'lucide-react'
 import Link from "next/link"
 import { getUseCartStore } from "../../store/cart"
 import { menuItems } from "../../lib/menuData";
@@ -13,17 +13,38 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { addComment, getComments } from "../../action/comments"; // Fixed path
 import { getCurrentUser, logoutUser } from "../../action/auth";
 
+interface Comment {
+  id: string;
+  comment_text: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  profiles: {
+    avatar_url: string;
+    username: string;
+  } | null;
+}
+
+interface User {
+  id: string;
+  email: string;
+  user_metadata: {
+    avatar_url: string;
+    full_name: string;
+  };
+}
+
 function LandingPageContent() {
   const useCartStore = getUseCartStore();
   const { addToCart, cartItemCount } = useCartStore();
   const [activeCategory, setActiveCategory] = useState("burger");
   const formRef = useRef<HTMLFormElement>(null);
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [hasMoreComments, setHasMoreComments] = useState(false);
   const [commentsOffset, setCommentsOffset] = useState(0);
   const [totalComments, setTotalComments] = useState(0);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
@@ -60,7 +81,6 @@ function LandingPageContent() {
         if (!loadMore) {
           setComments([]);
           setHasMoreComments(false);
-          setTotalComments(0);
         }
         return;
       }
@@ -99,7 +119,7 @@ function LandingPageContent() {
 
   useEffect(() => {
     fetchComments(); // Load initial comments
-  }, []);
+  }, [fetchComments]);
 
   useEffect(() => {
     const category = searchParams.get('category');
@@ -136,7 +156,7 @@ function LandingPageContent() {
         setEditingText('');
         alert('Comment updated successfully!');
       }
-    } catch (error) {
+    } catch (_error) {
       alert('Failed to update comment');
     }
   };
@@ -165,7 +185,7 @@ function LandingPageContent() {
         setTotalComments(prev => prev - 1);
         alert('Comment deleted successfully!');
       }
-    } catch (error) {
+    } catch (_error) {
       alert('Failed to delete comment');
     } finally {
       setDeletingCommentId(null);
@@ -433,7 +453,7 @@ function LandingPageContent() {
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-4xl font-bold text-orange-900 mb-8">About Us</h2>
             <p className="text-xl italic text-orange-800 mb-6">
-              "Bite Into Happiness - Fresh, Juicy, Unforgettable."
+              &quot;Bite Into Happiness - Fresh, Juicy, Unforgettable.&quot;
             </p>
             <p className="text-orange-800 text-lg leading-relaxed mb-8">
               This sparks curiosity and appetite, making visitors want to click Read More. Do you want me to give you 2-3 more variations so you can choose the best one?
@@ -473,9 +493,9 @@ function LandingPageContent() {
                   We have the best chef in the world
                 </h2>
                 <blockquote className="text-lg text-orange-800 mb-6 leading-relaxed">
-                  "The best chef is the one who can turn a simple burger into a masterpiece — balancing juicy flavors,
+                  &quot;The best chef is the one who can turn a simple burger into a masterpiece — balancing juicy flavors,
                   fresh ingredients, and perfect seasoning in every bite. A true burger chef doesn’t just cook food,
-                  they create happiness stacked between buns."
+                  they create happiness stacked between buns.&quot;
                 </blockquote>
                 <div className="flex items-center gap-4 mb-4">
                  
@@ -515,7 +535,7 @@ function LandingPageContent() {
                     <p className="font-semibold text-gray-900">
                       {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous'}
                     </p>
-                    <p className="text-sm text-gray-500">What's on your mind?</p>
+                                        <p className="text-sm text-gray-500">What&apos;s on your mind?</p>
                   </div>
                 </div>
 

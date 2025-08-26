@@ -9,6 +9,15 @@ import { Edit3, ShoppingCart, User, Mail, Phone } from "lucide-react";
 import { getCurrentUser, updateUserProfile } from "../../action/auth";
 import { useRouter } from 'next/navigation';
 
+interface User {
+  id: string;
+  email?: string;
+  user_metadata: {
+    full_name?: string;
+    mobile?: string;
+  };
+}
+
 export default function UserProfile() {
   const [userData, setUserData] = useState({
     name: "Your name",
@@ -19,7 +28,7 @@ export default function UserProfile() {
   const [saving, setSaving] = useState(false);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const router = useRouter();
 
@@ -38,7 +47,7 @@ export default function UserProfile() {
           
           try {
             const { getProfile } = await import('../../action/profile');
-            const { data: profile, error: profileError } = await getProfile(user.id);
+            const { data: profile, error: _profileError } = await getProfile(user.id);
             
             if (profile && profile.avatar_url) {
               setAvatar(profile.avatar_url);
@@ -221,7 +230,7 @@ export default function UserProfile() {
                       width={128}
                       height={128}
                       className="w-full h-full object-cover"
-                      onError={(e) => {
+                      onError={() => {
                         console.log('Image load error, using default');
                         setAvatar(null); // Reset to default
                       }}

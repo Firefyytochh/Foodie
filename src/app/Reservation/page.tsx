@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { ShoppingCart, User, Menu, Phone, Mail, MapPin, Calendar as CalendarIcon } from "lucide-react" 
+import { ShoppingCart, User, Phone, Mail, Calendar as CalendarIcon } from "lucide-react" 
 import Image from "next/image"
 import Link from "next/link"
 import { Calendar } from "@/components/ui/calendar" 
@@ -14,11 +14,16 @@ import { createReservation } from "../../action/reservation"
 import { useRouter } from "next/navigation"
 import { createClient } from "../../../utils/supabase/client"
 
+interface User {
+  id: string;
+  email: string;
+}
+
 export default function FoodieReservation() {
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const formRef = useRef<HTMLFormElement>(null);
     const router = useRouter();
@@ -137,7 +142,7 @@ export default function FoodieReservation() {
             <div className="px-6 py-8">
                 {/* Foodie Logo Section */}
                 <div className="text-center mb-12">
-                    <img src="/logo.png" alt="Foodie Logo" className="h-24 w-auto mx-auto mb-4" />
+                                        <Image src="/logo.png" alt="Foodie Logo" width={96} height={96} className="h-24 w-auto mx-auto mb-4" />
                     <h2 className="text-4xl font-bold text-gray-800 italic mb-8">Please Enter Your Information</h2>
                 </div>
 
@@ -255,7 +260,7 @@ export default function FoodieReservation() {
                                 {/* Location Map */}
                                 <div className="mb-4 transition-transform duration-200 hover:scale-105">
                                     <Link href="https://www.google.com/maps/place/Phnom+Penh+location">
-                                        <img src="/location.png" alt="Location Map" className="w-32 h-24 rounded border" />
+                                        <Image src="/location.png" alt="Location Map" width={128} height={96} className="w-32 h-24 rounded border" />
                                         <p className="text-sm text-gray-600 mt-1">Here is the location</p>
                                     </Link>
                                 </div>

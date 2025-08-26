@@ -2,14 +2,16 @@
 
 import { createClient } from "@supabase/supabase-js";
 
+
+
 function getSupabaseAdmin() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('Missing Supabase environment variables');
   }
   
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
 
@@ -17,7 +19,7 @@ export async function createPayment(
   paymentData: {
     orderId: string;
     paymentMethod: 'card' | 'qr';
-    items: any[];
+    items: unknown[];
     subtotal: number;
     shippingCost: number;
     totalAmount: number;
@@ -67,7 +69,7 @@ export async function createPayment(
 
     return { data, success: true };
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Payment error:', error);
     return { error: { message: 'An unexpected error occurred. Please try again.' } };
   }
@@ -93,7 +95,7 @@ export async function getUserPayments(userId: string) {
 
     return { data, error: null };
     
-  } catch (error: any) {
-    return { data: null, error: error.message };
+  } catch (error: unknown) {
+    return { data: null, error: (error as Error).message };
   }
 }

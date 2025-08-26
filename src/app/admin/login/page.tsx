@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
-import Link from "next/link";
-import { loginUser } from "@/action/auth";
+import { adminLogin } from "@/action/admin";
+import { setAdminStatus } from "@/utils/admin";
 
-export default function LoginPage() {
+export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,15 +24,16 @@ export default function LoginPage() {
     setLoading(true);
     setMessage("");
 
-    const result = await loginUser(email, password);
+    const result = await adminLogin(email, password);
 
     setLoading(false);
 
-    if (result.error) {
-      setMessage(result.error);
+    if (!result.success) {
+      setMessage(result.error || "Invalid admin credentials.");
     } else {
-      setMessage("Login successful!");
-      router.push("/landingpage");
+      setAdminStatus(true);
+      setMessage("Admin login successful!");
+      router.push("/admin/dashboard");
     }
   };
 
@@ -59,25 +60,25 @@ export default function LoginPage() {
               </div>
               <div className="text-center">
                 <h1 className="text-4xl font-bold text-red-600 mb-1" style={{ fontFamily: "serif" }}>
-                  Foodie
+                  Foodie Admin
                 </h1>
                 <p className="text-xs text-gray-700 font-medium tracking-wider">
-                  MADE BY FOOD LOVER
+                  ADMIN PANEL
                 </p>
               </div>
             </div>
           </div>
 
           <h2 className="text-5xl font-bold text-gray-800 mb-2" style={{ fontFamily: "serif", fontStyle: "italic" }}>
-            Welcome to Foodie
+            Admin Login
           </h2>
-          <p className="text-lg text-gray-700 font-medium">Made By Food Lover For Food Lover</p>
+          <p className="text-lg text-gray-700 font-medium">Only for authorized admin</p>
         </div>
 
         <div className="w-full max-w-md space-y-4">
           <Input
             type="email"
-            placeholder="Email or username..."
+            placeholder="Admin email..."
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full px-6 py-4 text-lg bg-white/90 backdrop-blur-sm border-0 rounded-full shadow-lg placeholder:text-gray-500 focus:ring-2 focus:ring-orange-400"
@@ -91,19 +92,6 @@ export default function LoginPage() {
             className="w-full px-6 py-4 text-lg bg-white/90 backdrop-blur-sm border-0 rounded-full shadow-lg placeholder:text-gray-500 focus:ring-2 focus:ring-orange-400"
           />
 
-          <div className="flex justify-between items-center px-2 py-2">
-            <div className="text-gray-700">
-              {"Don't have an account? "}
-              <Link href="/Signup">
-                <button className="text-orange-500 hover:text-orange-600 font-medium underline">Sign Up</button>
-              </Link>
-            </div>
-
-            <Link href="/forgetpw">
-              <button className="text-orange-500 hover:text-orange-600 font-medium underline">Forgot password</button>
-            </Link>
-          </div>
-
           {message && <p className="text-red-500 text-center">{message}</p>}
 
           <div className="pt-4">
@@ -112,7 +100,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 text-lg font-semibold rounded-full shadow-lg transition-all duration-200 hover:shadow-xl"
             >
-              {loading ? "Logging in..." : "Log In"}
+              {loading ? "Logging in..." : "Log In as Admin"}
             </Button>
           </div>
         </div>
@@ -120,10 +108,10 @@ export default function LoginPage() {
         <div className="mt-6 text-center">
           <Button
             variant="ghost"
-            onClick={() => router.push('/admin/login')}
+            onClick={() => router.push('/login')}
             className="text-orange-600 hover:text-orange-700 text-sm"
           >
-            Admin Access
+            User Login
           </Button>
         </div>
       </div>
