@@ -14,10 +14,10 @@ function getSupabaseAdmin() {
   );
 }
 
-import { createClient } from "../../utils/supabase/server"; // Import the shared createClient
+
 
 async function getServerUser() {
-  const supabase = createClient(); // Use the shared createClient
+  const supabase = getSupabaseAdmin(); // Use the shared getSupabaseAdmin
 
   const { data: { user }, error } = await supabase.auth.getUser();
   return { user, error };
@@ -74,7 +74,7 @@ export async function createReservation(formData: FormData, userId: string) {
           reservation_date: reservationDate,
           reservation_time: reservationTime,
           special_notes: specialNotes?.trim() || null,
-          status: 'confirmed'
+          status: 'pending'
         }
       ])
       .select()
@@ -116,27 +116,15 @@ export async function getUserReservations(userId: string) {
 
 export async function getAllReservations() {
   try {
-        const supabaseAdmin = getSupabaseAdmin();
-    
+    const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
-      .from('reservations')
-      .select(`
-        *,
-        profiles (
-          username,
-          avatar_url
-        )
-      `)
-      .order('created_at', { ascending: false });
+      .from("reservations")
+      .select("id, first_name, last_name, email, phone, guest_count, reservation_date, reservation_time, status")
+      .order("created_at", { ascending: false });
 
-    if (error) {
-      return { data: null, error: error.message };
-    }
-
-    return { data, error: null };
-    
-  } catch (error: unknown) {
-    return { data: null, error: (error as Error).message };
+    return { data, error };
+  } catch (error: any) {
+    return { data: [], error: error.message || "Unknown error" };
   }
 }
 
@@ -174,7 +162,7 @@ export async function submitReservation(formData: {
         reservation_date: formData.date,
         reservation_time: formData.time,
         guest_count: parseInt(formData.guests),
-        status: 'confirmed'  // Match your table default
+        status: 'pending'  // Match your table default
       }])
       .select()
       .single();
@@ -188,5 +176,78 @@ export async function submitReservation(formData: {
   } catch (error) {
     console.error('Reservation submission failed:', error);
     return { success: false, error: 'Failed to submit reservation' };
+  }
+}
+
+export async function getReservations() {
+  // For admin: get all reservations
+  return await getAllReservations();
+}
+
+export async function confirmReservation(id: string) {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { error } = await supabaseAdmin
+      .from('reservations')
+      .update({ status: 'confirmed' })
+      .eq('id', id);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Unknown error" };
+  }
+}
+
+export async function declineReservation(id: string) {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { error } = await supabaseAdmin
+      .from('reservations')
+      .update({ status: 'declined' })
+      .eq('id', id);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Unknown error" };
+  }
+}
+
+export async function deleteReservation(id: string) {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { error } = await supabaseAdmin
+      .from("reservations")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Unknown error" };
+  }
+}
+
+export async function deleteAllReservations() {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { error } = await supabaseAdmin
+      .from("reservations")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Unknown error" };
   }
 }

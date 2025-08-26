@@ -36,3 +36,29 @@ export async function confirmOrder(orderId: string) {
 
   return { success: !error, data, error: error?.message };
 }
+
+export async function deleteOrder(orderId: string) {
+  const { error } = await supabase
+    .from('orders')
+    .delete()
+    .eq('id', orderId);
+
+  if (error) {
+    console.error("Error deleting order:", error.message);
+    return { success: false, error: error.message };
+  }
+  return { success: true };
+}
+
+export async function deleteAllOrders() {
+  const { error } = await supabase
+    .from('orders')
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+
+  if (error) {
+    console.error("Error deleting all orders:", error.message);
+    return { success: false, error: error.message };
+  }
+  return { success: true };
+}

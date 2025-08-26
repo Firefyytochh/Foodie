@@ -150,6 +150,38 @@ export default function AdminDashboard() {
               </div>
             </div>
           </Link>
+
+          <Link href="/admin/reservations">
+            <div className="bg-white rounded-xl shadow-md p-7 hover:shadow-xl transition-shadow cursor-pointer group">
+              <div className="flex items-center">
+                <div className="p-4 bg-purple-100 rounded-xl group-hover:bg-purple-200 transition">
+                  <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2h2M7 8V6a5 5 0 0110 0v2" />
+                  </svg>
+                </div>
+                <div className="ml-5">
+                  <h3 className="text-xl font-semibold text-gray-900">Reservations</h3>
+                  <p className="text-gray-600">View and manage shop reservations</p>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/admin/payments">
+            <div className="bg-white rounded-xl shadow-md p-7 hover:shadow-xl transition-shadow cursor-pointer group">
+              <div className="flex items-center">
+                <div className="p-4 bg-blue-100 rounded-xl group-hover:bg-blue-200 transition">
+                  <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a5 5 0 00-10 0v2M5 9h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2z" />
+                  </svg>
+                </div>
+                <div className="ml-5">
+                  <h3 className="text-xl font-semibold text-gray-900">User Payment</h3>
+                  <p className="text-gray-600">View and manage payments</p>
+                </div>
+              </div>
+            </div>
+          </Link>
         </div>
 
         {/* Welcome Message */}

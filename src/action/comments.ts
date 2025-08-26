@@ -22,8 +22,6 @@ export async function getComments(limit: number = 10, offset: number = 0) {
       .from('comments')
       .select('*', { count: 'exact', head: true });
 
-    const totalComments = count; // Assign count to totalComments
-
     if (countError) {
       console.error('Count error:', countError);
       return { data: [], error: countError.message, hasMore: false, total: 0 };
@@ -101,6 +99,7 @@ export async function getComments(limit: number = 10, offset: number = 0) {
       })
     );
 
+    const totalComments = count || 0;
     const hasMore = (offset + limit) < totalComments;
 
     return { 
@@ -109,9 +108,9 @@ export async function getComments(limit: number = 10, offset: number = 0) {
       hasMore, 
       total: totalComments 
     };
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error('Get comments error:', error);
-    return { data: [], error: (error as Error).message, hasMore: false, total: 0 };
+    return { data: [], error: error.message, hasMore: false, total: 0 };
   }
 }
 
@@ -179,7 +178,7 @@ export async function addComment(commentText: string, userId: string) {
             profiles: { username, avatar_url }
           };
           return { data: enrichedComment, error: null };
-        } catch (enrichError: unknown) {
+        } catch (enrichError) {
           const enrichedComment = {
             ...data2,
             comment_text: data2.content || '',
@@ -222,7 +221,7 @@ export async function addComment(commentText: string, userId: string) {
         profiles: { username, avatar_url }
       };
       return { data: enrichedComment, error: null };
-    } catch (enrichError: unknown) {
+    } catch (enrichError) {
       const enrichedComment = {
         ...data,
         comment_text: data.comment_text || '',
@@ -231,9 +230,9 @@ export async function addComment(commentText: string, userId: string) {
       return { data: enrichedComment, error: null };
     }
 
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error('Add comment failed:', error);
-    return { data: null, error: (error as Error).message };
+    return { data: null, error: error.message };
   }
 }
 
@@ -296,9 +295,9 @@ export async function updateComment(commentId: string, newText: string, userId: 
       }, 
       error: null 
     };
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error('Update comment failed:', error);
-    return { data: null, error: (error as Error).message };
+    return { data: null, error: error.message };
   }
 }
 
@@ -317,7 +316,7 @@ export async function deleteComment(commentId: string, userId: string) {
     }
 
     return { success: true };
-  } catch (error: unknown) {
-    return { error: (error as Error).message };
+  } catch (error: any) {
+    return { error: error.message };
   }
 }

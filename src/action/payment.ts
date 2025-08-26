@@ -8,7 +8,7 @@ function getSupabaseAdmin() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('Missing Supabase environment variables');
   }
-  
+  // @ts-ignore
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -47,7 +47,7 @@ export async function createPayment(
           user_id: userId,
           order_id: paymentData.orderId,
           payment_method: paymentData.paymentMethod,
-          payment_status: 'completed',
+          payment_status: 'pending',
           items: paymentData.items,
           subtotal: paymentData.subtotal,
           shipping_cost: paymentData.shippingCost,
@@ -97,5 +97,70 @@ export async function getUserPayments(userId: string) {
     
   } catch (error: unknown) {
     return { data: null, error: (error as Error).message };
+  }
+}
+
+export async function getPayments() {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data, error } = await supabaseAdmin
+      .from("payments")
+      .select("id, order_id, payment_method, payment_status, items, subtotal, shipping_cost, customer_phone, customer_location, card_last_four, card_type, cardholder_name, created_at, updated_at")
+      .order("created_at", { ascending: false });
+
+    return { data, error };
+  } catch (error: any) {
+    return { data: [], error: error.message || "Unknown error" };
+  }
+}
+
+export async function confirmPayment(id: string) {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { error } = await supabaseAdmin
+      .from("payments")
+      .update({ payment_status: "confirmed" })
+      .eq("id", id);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Unknown error" };
+  }
+}
+
+export async function deletePayment(id: string) {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { error } = await supabaseAdmin
+      .from("payments")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Unknown error" };
+  }
+}
+
+export async function deleteAllPayments() {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { error } = await supabaseAdmin
+      .from("payments")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Unknown error" };
   }
 }
