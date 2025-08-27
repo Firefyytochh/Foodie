@@ -12,6 +12,8 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [orderCount, setOrderCount] = useState<number | null>(null);
+  const [reservationCount, setReservationCount] = useState<number | null>(null);
+  const [paymentCount, setPaymentCount] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -23,7 +25,9 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchOrders = async () => {
       const result = await getOrders();
-      if (result.success && result.data) setOrderCount(result.data.length);
+      if (result.success && result.data) {
+        setOrderCount(result.data.filter((o: any) => o.status === "pending").length);
+      }
     };
     fetchOrders();
 
@@ -34,8 +38,18 @@ export default function AdminDashboard() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "orders" },
         (payload) => {
-          if (payload.new.status === "accepted") {
+          if (payload.new.status === "pending") {
             setOrderCount((prev) => (prev !== null ? prev + 1 : 1));
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders" },
+        (payload) => {
+          // If an order is confirmed, decrease the count
+          if (payload.new.status === "confirmed" && payload.old.status === "pending") {
+            setOrderCount((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
           }
         }
       )
@@ -43,6 +57,54 @@ export default function AdminDashboard() {
 
     return () => {
       supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Reservations
+    const fetchReservations = async () => {
+      const result = await import("@/action/reservation").then(mod => mod.getReservations());
+      if (result.data) setReservationCount(result.data.filter((r: any) => r.status === "pending").length);
+    };
+    fetchReservations();
+
+    const supabase = createClient();
+    const reservationChannel = supabase
+      .channel("reservations-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "reservations" },
+        (payload) => {
+          if (payload.new.status === "pending") {
+            setReservationCount((prev) => (prev !== null ? prev + 1 : 1));
+          }
+        }
+      )
+      .subscribe();
+
+    // Payments
+    const fetchPayments = async () => {
+      const result = await import("@/action/payment").then(mod => mod.getPayments());
+      if (result.data) setPaymentCount(result.data.filter((p: any) => p.payment_status === "pending").length);
+    };
+    fetchPayments();
+
+    const paymentChannel = supabase
+      .channel("payments-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "payments" },
+        (payload) => {
+          if (payload.new.payment_status === "pending") {
+            setPaymentCount((prev) => (prev !== null ? prev + 1 : 1));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(reservationChannel);
+      supabase.removeChannel(paymentChannel);
     };
   }, []);
 
@@ -150,12 +212,17 @@ export default function AdminDashboard() {
           </Link>
 
           <Link href="/admin/reservations">
-            <div className="bg-white rounded-xl shadow-md p-7 hover:shadow-xl transition-shadow cursor-pointer group">
+            <div className="bg-white rounded-xl shadow-md p-7 hover:shadow-xl transition-shadow cursor-pointer group relative">
               <div className="flex items-center">
-                <div className="p-4 bg-purple-100 rounded-xl group-hover:bg-purple-200 transition">
+                <div className="p-4 bg-purple-100 rounded-xl group-hover:bg-purple-200 transition relative">
                   <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2h2M7 8V6a5 5 0 0110 0v2" />
                   </svg>
+                  {reservationCount !== null && reservationCount > 0 && (
+                    <span className="absolute -top-3 -right-3 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow">
+                      {reservationCount}
+                    </span>
+                  )}
                 </div>
                 <div className="ml-5">
                   <h3 className="text-xl font-semibold text-gray-900">Reservations</h3>
@@ -166,12 +233,17 @@ export default function AdminDashboard() {
           </Link>
 
           <Link href="/admin/payments">
-            <div className="bg-white rounded-xl shadow-md p-7 hover:shadow-xl transition-shadow cursor-pointer group">
+            <div className="bg-white rounded-xl shadow-md p-7 hover:shadow-xl transition-shadow cursor-pointer group relative">
               <div className="flex items-center">
-                <div className="p-4 bg-blue-100 rounded-xl group-hover:bg-blue-200 transition">
+                <div className="p-4 bg-blue-100 rounded-xl group-hover:bg-blue-200 transition relative">
                   <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a5 5 0 00-10 0v2M5 9h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2z" />
                   </svg>
+                  {paymentCount !== null && paymentCount > 0 && (
+                    <span className="absolute -top-3 -right-3 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow">
+                      {paymentCount}
+                    </span>
+                  )}
                 </div>
                 <div className="ml-5">
                   <h3 className="text-xl font-semibold text-gray-900">User Payment</h3>

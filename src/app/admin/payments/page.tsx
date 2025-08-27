@@ -80,7 +80,7 @@ export default function AdminPaymentsPage() {
     const result = await confirmPayment(id);
     if (result.success) {
       setPayments(payments =>
-        payments.map(p => p.id === id ? { ...p, payment_status: "confirmed" } : p)
+        payments.map(p => p.id === id ? { ...p, payment_status: "completed" } : p)
       );
       setPendingCount(count => (count > 0 ? count - 1 : 0));
     } else {

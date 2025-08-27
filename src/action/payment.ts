@@ -119,7 +119,7 @@ export async function confirmPayment(id: string) {
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
       .from("payments")
-      .update({ payment_status: "confirmed" })
+      .update({ payment_status: "completed" })
       .eq("id", id);
 
     if (error) {
