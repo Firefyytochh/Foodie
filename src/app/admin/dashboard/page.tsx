@@ -259,7 +259,7 @@ export default function AdminDashboard() {
           <h2 className="text-3xl font-bold mb-3 drop-shadow">Welcome to Foodie Admin Panel!</h2>
           <p className="text-orange-100 text-lg">
             Manage your restaurant&apos;s menu items and content from this dashboard.<br />
-            You can add new burgers, update prices, and edit your About Us page.
+            You can add new burgers, update prices, manage orders, payments, reservations, and edit your About Us page.
           </p>
         </div>
       </main>
