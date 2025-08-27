@@ -64,21 +64,19 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50">
+    <div className="min-h-screen bg-orange-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-20">
+      <header className="bg-orange-100 border-b border-orange-200 shadow-sm sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <h1 className="text-3xl font-extrabold text-orange-700 tracking-tight">Admin Dashboard</h1>
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="Logo" className="h-10 w-10 rounded-full shadow bg-white" />
+              <h1 className="text-3xl font-extrabold text-orange-700 tracking-tight">Admin Dashboard</h1>
+            </div>
             <div className="flex gap-4">
+              <Button variant="outline" onClick={() => router.push('/')}>View Website</Button>
               <Button
-                variant="outline"
-                onClick={() => router.push('/')}
-              >
-                View Website
-              </Button>
-              <Button
-                variant="destructive"
+                className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 rounded shadow transition"
                 onClick={handleLogout}
               >
                 Logout
