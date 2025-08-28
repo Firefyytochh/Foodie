@@ -53,34 +53,73 @@ export default function FoodieReservation() {
         checkUser();
     }, [supabase.auth, router]);
 
+    // Restrict phone input: only allow numbers starting with 0
+    const validatePhone = (value: string) => {
+        return /^0\d{7,}$/.test(value); // starts with 0, at least 8 digits
+    };
+
+    // Restrict email input: must be a valid email format
+    const validateEmail = (value: string) => {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    };
+
+    // Restrict special notes: max 200 characters
+    const validateSpecialNotes = (value: string) => {
+        return value.length <= 200;
+    };
+
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        
+
         if (!user) {
             alert('Please log in to make a reservation');
             router.push('/login');
             return;
         }
-        
+
         setIsSubmitting(true);
-        
+
         const formData = new FormData(event.currentTarget);
-        
+
+        // Phone validation
+        const phone = formData.get('phone') as string;
+        if (!validatePhone(phone)) {
+            alert('Phone number must start with 0 and be at least 8 digits.');
+            setIsSubmitting(false);
+            return;
+        }
+
+        // Email validation
+        const email = formData.get('email') as string;
+        if (!validateEmail(email)) {
+            alert('Please enter a valid email address (e.g., Example@gmail.com).');
+            setIsSubmitting(false);
+            return;
+        }
+
+        // Special notes validation
+        const specialNotes = formData.get('specialNotes') as string;
+        if (!validateSpecialNotes(specialNotes)) {
+            alert('Special notes must be 200 characters or less.');
+            setIsSubmitting(false);
+            return;
+        }
+
         // Add the selected date to form data
         if (date) {
             formData.set('reservationDate', format(date, 'yyyy-MM-dd'));
         }
-        
+
         // Pass userId as second parameter
         const result = await createReservation(formData, user.id);
-        
+
         if (result.error) {
             alert(`Error: ${result.error.message}`);
         } else {
             alert('Reservation created successfully!');
             router.push('/Rdone');
         }
-        
+
         setIsSubmitting(false);
     };
 
@@ -176,10 +215,11 @@ export default function FoodieReservation() {
                         <Input 
                             name="email"
                             type="email"
-                            placeholder="Enter your email" 
-                            defaultValue={user?.email || ''}
+                            pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
+                            placeholder="Example@gmail.com"
                             required
                             className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" 
+                            title="Please enter a valid email address (e.g., Example@gmail.com)"
                         />
                     </div>
 
@@ -189,9 +229,11 @@ export default function FoodieReservation() {
                         <Input 
                             name="phone"
                             type="tel"
-                            placeholder="Enter your phone number" 
+                            pattern="0\d{7,}"
+                            placeholder="Enter your phone number (start with 0)"
                             required
                             className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" 
+                            title="Phone number must start with 0 and be at least 8 digits"
                         />
                     </div>
 
@@ -270,9 +312,11 @@ export default function FoodieReservation() {
                                     <label className="block text-lg font-bold text-gray-800 mb-2">Special Notes</label>
                                     <Textarea 
                                         name="specialNotes"
-                                        placeholder="Any special requests or dietary requirements..." 
+                                        maxLength={200}
+                                        placeholder="Any special requests or dietary requirements... (max 200 characters)" 
                                         className="bg-white/80 border-gray-300 h-24 transition-transform duration-200 hover:scale-105" 
                                     />
+                                    <span className="text-xs text-gray-500 block mt-1">Max 200 characters</span>
                                 </div>
                             </div>
                         </div>

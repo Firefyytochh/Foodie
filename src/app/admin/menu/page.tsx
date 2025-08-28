@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from 'next/image';
 import { isAdmin } from '@/utils/admin';
 import { addMenuItem, getMenuItems, deleteMenuItem } from '@/action/admin';
@@ -16,8 +17,17 @@ interface MenuItem {
   rating: number;
   description: string;
   image_url: string | null;
+  category: string;
   created_at: string;
 }
+
+// Category options based on landing page categories
+const CATEGORIES = [
+  { value: 'burger', label: 'Burger' },
+  { value: 'drink', label: 'Drink' },
+  { value: 'ice-cream', label: 'Ice Cream' },
+  { value: 'dessert', label: 'Dessert' },
+];
 
 export default function MenuManagement() {
   const router = useRouter();
@@ -33,6 +43,7 @@ export default function MenuManagement() {
     price: '',
     rating: '',
     description: '',
+    category: '',
     image: null as File | null
   });
 
@@ -58,11 +69,23 @@ export default function MenuManagement() {
     e.preventDefault();
     setSubmitting(true);
 
+    // Add validation to ensure category is selected
+    if (!formData.category) {
+      alert('Please select a category');
+      setSubmitting(false);
+      return;
+    }
+
     const submitData = new FormData();
     submitData.append('name', formData.name);
     submitData.append('price', formData.price);
     submitData.append('rating', formData.rating);
     submitData.append('description', formData.description);
+    submitData.append('category', formData.category);
+    
+    // Debug: Log the category being sent
+    console.log('Submitting category:', formData.category);
+    
     if (formData.image) {
       submitData.append('image', formData.image);
     }
@@ -70,11 +93,13 @@ export default function MenuManagement() {
     const result = await addMenuItem(submitData);
 
     if (result.success) {
+      alert(`Item added successfully with category: ${formData.category}`);
       setFormData({
         name: '',
         price: '',
         rating: '',
         description: '',
+        category: '',
         image: null
       });
       setShowAddForm(false);
@@ -84,6 +109,12 @@ export default function MenuManagement() {
     }
 
     setSubmitting(false);
+  };
+
+  // Also add a debug function to check form state
+  const handleCategoryChange = (value: string) => {
+    console.log('Category selected:', value);
+    setFormData({...formData, category: value});
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -145,6 +176,31 @@ export default function MenuManagement() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Category
+                  </label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={handleCategoryChange}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          {category.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {/* Debug display */}
+                  {formData.category && (
+                    <p className="text-xs text-gray-500 mt-1">Selected: {formData.category}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Price ($)
                   </label>
                   <Input
@@ -171,7 +227,7 @@ export default function MenuManagement() {
                     required
                   />
                 </div>
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Image
                   </label>
@@ -189,7 +245,7 @@ export default function MenuManagement() {
                 <Textarea
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder="Describe this delicious burger..."
+                  placeholder="Describe this delicious item..."
                   rows={3}
                 />
               </div>
@@ -234,6 +290,7 @@ export default function MenuManagement() {
                       <h3 className="font-semibold text-lg">{item.name}</h3>
                       <p className="text-gray-600">{item.description}</p>
                       <div className="flex gap-4 text-sm text-gray-500 mt-1">
+                        <span>Category: {item.category || 'N/A'}</span>
                         <span>Price: ${item.price}</span>
                         <span>Rating: {item.rating}/5</span>
                       </div>

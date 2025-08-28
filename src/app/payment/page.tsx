@@ -65,9 +65,33 @@ export default function CheckoutPage() {
         return `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     };
 
+    // Restrict location input: only allow links (basic check for http/https)
+    const validateLocation = (value: string) => {
+        return /^https?:\/\/.+/.test(value);
+    };
+
+    // Restrict phone input: only allow numbers starting with 0
+    const validatePhone = (value: string) => {
+        return /^0\d{7,}$/.test(value); // starts with 0, at least 8 digits
+    };
+
     const handlePayment = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        
+
+        const formData = new FormData(event.currentTarget);
+        const customerPhone = formData.get('phoneNumber') as string;
+        const customerLocation = formData.get('location') as string;
+
+        // Restriction checks
+        if (!validateLocation(customerLocation)) {
+            alert('Please enter a valid location link (must start with http:// or https://)');
+            return;
+        }
+        if (!validatePhone(customerPhone)) {
+            alert('Phone number must start with 0 and contain only digits.');
+            return;
+        }
+
         if (!user) {
             alert('Please log in to make a payment');
             router.push('/login');
@@ -85,10 +109,6 @@ export default function CheckoutPage() {
         }
 
         setIsSubmitting(true);
-
-        const formData = new FormData(event.currentTarget);
-        const customerPhone = formData.get('phoneNumber') as string;
-        const customerLocation = formData.get('location') as string;
 
         const paymentData = {
             orderId: generateOrderId(),
@@ -206,9 +226,11 @@ export default function CheckoutPage() {
                         <Input
                             name="location"
                             type="url"
+                            pattern="https?://.+"
                             placeholder="Paste your location link here (e.g., Google Maps link)"
                             className="w-full max-w-md bg-white/50 transition-transform duration-200 hover:scale-105"
                             required
+                            title="Please enter a valid link starting with http:// or https://"
                         />
                     </div>
 
@@ -221,9 +243,11 @@ export default function CheckoutPage() {
                                     id="phoneNumber"
                                     name="phoneNumber"
                                     type="tel"
-                                    placeholder="Enter your phone number"
+                                    pattern="0\d{7,}"
+                                    placeholder="Enter your phone number (start with 0)"
                                     className="bg-white/50"
                                     required
+                                    title="Phone number must start with 0 and be at least 8 digits"
                                 />
                             </CardContent>
                         </Card>

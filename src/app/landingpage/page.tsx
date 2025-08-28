@@ -4,7 +4,7 @@ import Image from "next/image"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
 import { Card, CardContent } from "../../components/ui/card"
-import { Star, ShoppingCart, User, Menu, Phone, Mail, Edit, Trash2, Check, X } from 'lucide-react'
+import { Star, ShoppingCart, User, Menu, Check, Edit, Trash2, Mail, Phone, X } from "lucide-react"
 import Link from "next/link"
 import { getUseCartStore } from "../../store/cart"
 import { menuItems } from "../../lib/menuData";
@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from 'next/navigation';
 import { addComment, getComments } from "../../action/comments"; // Fixed path
 import { getCurrentUser, logoutUser } from "../../action/auth";
+import { getMenuItems } from "../../action/admin"; // Add this import
 
 interface Comment {
   id: string;
@@ -34,10 +35,27 @@ interface User {
   };
 }
 
+// Helper function for image path (make sure this matches your menu page logic)
+function getImageSrc(image?: string) {
+  if (!image || image.trim() === "") {
+    return "/default.jpg";
+  }
+  if (image.startsWith("http")) {
+    return image;
+  }
+  // Use /uploads/ for local images (same as menu page)
+  return `/uploads/${image}`;
+}
+
 function LandingPageContent() {
   const useCartStore = getUseCartStore();
-  const { addToCart, cartItemCount } = useCartStore();
-  const [activeCategory, setActiveCategory] = useState("burger");
+  const { addToCart, cartItemCount, items } = useCartStore();
+  // Ensure items is always an array
+  const safeCart = Array.isArray(items) ? items : [];
+  // Set default category to the first available category or empty
+  const [activeCategory, setActiveCategory] = useState<string>("");
+  // Track which button was just clicked
+  const [justAdded, setJustAdded] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -48,6 +66,8 @@ function LandingPageContent() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+  const [dbMenuItems, setDbMenuItems] = useState<any[]>([]);
+  const [loadingMenu, setLoadingMenu] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -140,6 +160,10 @@ function LandingPageContent() {
     }
 
     try {
+      if (!user || !user.id) {
+        alert('You must be logged in to edit a comment');
+        return;
+      }
       const { updateComment } = await import('../../action/comments');
       const result = await updateComment(commentId, editingText, user.id);
       
@@ -172,11 +196,17 @@ function LandingPageContent() {
     }
 
     setDeletingCommentId(commentId);
-    
+
+    if (!user || !user.id) {
+      alert('You must be logged in to delete a comment');
+      setDeletingCommentId(null);
+      return;
+    }
+
     try {
       const { deleteComment } = await import('../../action/comments');
       const result = await deleteComment(commentId, user.id);
-      
+
       if (result.error) {
         alert('Failed to delete comment: ' + result.error);
       } else {
@@ -190,6 +220,92 @@ function LandingPageContent() {
     } finally {
       setDeletingCommentId(null);
     }
+  };
+
+  // Add this function for Add to Cart button
+  const handleAddToCartWithFeedback = (item: { id: string; name: string; price: number; quantity: number; image: string }) => {
+    if (!safeCart.some(cartItem => cartItem.id === item.id)) {
+      addToCart(item);
+      setJustAdded(item.id);
+      setTimeout(() => setJustAdded(null), 2000); // Button stays "Added" for 2 seconds
+    }
+  };
+
+  // Fetch menu items from database
+  useEffect(() => {
+    const fetchMenu = async () => {
+      const result = await getMenuItems();
+      if (result.success && result.data) {
+        setDbMenuItems(result.data);
+      } else {
+        setDbMenuItems([]);
+      }
+      setLoadingMenu(false);
+    };
+    fetchMenu();
+  }, []);
+
+  // Filter for best sell items (choose top 3 by rating or any logic you want)
+  const bestSellItems = dbMenuItems
+    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+    .slice(0, 3);
+
+  // Get all unique categories from database
+  const getAllCategories = () => {
+    const categories = dbMenuItems
+      .map(item => item.category)
+      .filter(category => category && category.trim() !== '')
+      .map(category => category.toLowerCase().trim());
+    
+    return [...new Set(categories)].sort(); // Remove duplicates and sort
+  };
+
+  // Set default category when data loads
+  useEffect(() => {
+    if (dbMenuItems.length > 0 && !activeCategory) {
+      const categories = getAllCategories();
+      if (categories.length > 0) {
+        setActiveCategory(categories[0]); // Set to first available category
+      }
+    }
+  }, [dbMenuItems, activeCategory]);
+
+  // Fix the category filtering to handle ALL categories dynamically
+  const getFilteredItems = () => {
+    if (!activeCategory) return [];
+    
+    return dbMenuItems.filter(item => {
+      if (!item.category) return false;
+      
+      const itemCategory = item.category.toLowerCase().trim();
+      const selectedCategory = activeCategory.toLowerCase().trim();
+      
+      return itemCategory === selectedCategory;
+    });
+  };
+
+  const filteredItems = getFilteredItems();
+
+  // Fix category counting
+  const getCategoryCount = (category: string) => {
+    return dbMenuItems.filter(item => 
+      item.category && item.category.toLowerCase().trim() === category.toLowerCase().trim()
+    ).length;
+  };
+
+  // Get category display info
+  const getCategoryInfo = (category: string) => {
+    const categoryMap: { [key: string]: { name: string; icon: string } } = {
+      'burger': { name: 'Burger', icon: '/cheese_burger-removebg-preview.png' },
+      'drink': { name: 'Drink', icon: '/CokeinCan-removebg-preview.png' },
+      'ice-cream': { name: 'Ice Cream', icon: '/Strawberry-Ice-Cream-removebg-preview.png' },
+      'dessert': { name: 'Dessert', icon: '/default.jpg' }
+    };
+
+    return categoryMap[category] || { 
+      name: category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' '), 
+      icon: '/default.jpg' 
+    };
   };
 
   return (
@@ -287,79 +403,57 @@ function LandingPageContent() {
         <section className="px-6 py-16">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-4xl font-bold text-center text-orange-900 mb-12">Best Sell</h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              <Card className="overflow-hidden shadow-lg transition-transform duration-200 hover:scale-105">
-                <div className="aspect-square relative">
-                  <Image
-                    src="/cheese_burger-removebg-preview.png"
-                    alt="Cheese Burger"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-bold text-center mb-4">Cheese Burger</h3>
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold text-orange-600">$6</span>
-                    <Button className="bg-orange-600 hover:bg-orange-700 text-white rounded-full px-6" onClick={() => addToCart({ id: "1", name: "Cheese Burger", price: 6, quantity: 1, image: "/cheese_burger-removebg-preview.png" })}>
-                      Add to Cart
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm">4.9</span>
+            {loadingMenu ? (
+              <div className="text-center py-8">Loading menu...</div>
+            ) : bestSellItems.length === 0 ? (
+              <div className="flex items-center justify-center h-64 w-full bg-orange-100 rounded-lg">
+                <span className="text-2xl text-orange-500 font-bold">More menu will be available soon</span>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-3 gap-8">
+                {bestSellItems.map(item => (
+                  <Card key={item.id} className="group bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-0 rounded-2xl">
+                    <div className="relative overflow-hidden rounded-t-2xl bg-gradient-to-br from-orange-50 to-orange-100">
+                      <Image
+                        src={getImageSrc(item.image_url || item.image)}
+                        alt={item.name}
+                        width={300}
+                        height={300}
+                        className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-110"
+                      />
+                      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 shadow-lg">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          <span className="text-sm font-semibold text-gray-700">{item.rating}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden shadow-lg transition-transform duration-200 hover:scale-105">
-                <div className="aspect-square relative">
-                  <Image
-                    src="/Strawberry-Ice-Cream-removebg-preview.png"
-                    alt="Strawberry Ice-Cream"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-bold text-center mb-4">Strawberry Ice-Cream</h3>
-                  <div className="flex items-center bg-light-orange justify-between">
-                    <span className="text-2xl font-bold text-orange-600">$3</span>
-                    <Button className="bg-orange-600 hover:bg-orange-700 text-white rounded-full px-6" onClick={() => addToCart({ id: "2", name: "Strawberry Ice-Cream", price: 3, quantity: 1, image: "/Strawberry-Ice-Cream-removebg-preview.png" })}>
-                      Add to Cart
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm">5</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden shadow-lg transition-transform duration-200 hover:scale-105">
-                <div className="aspect-square relative">
-                  <Image
-                    src="/Southern-Fried-Chicken-Burger-1-removebg-preview.png"
-                    alt="Chicken Burger"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-bold text-center mb-4">Chicken Burger</h3>
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold text-orange-600">$5</span>
-                    <Button className="bg-orange-600 hover:bg-orange-700 text-white rounded-full px-6" onClick={() => addToCart({ id: "3", name: "Chicken Burger", price: 5, quantity: 1, image: "/Southern-Fried-Chicken-Burger-1-removebg-preview.png" })}>
-                      Add to Cart
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm">4.7</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                    <CardContent className="p-6 space-y-4">
+                      <h3 className="text-xl font-bold text-center text-gray-800 group-hover:text-orange-600 transition-colors duration-200">{item.name}</h3>
+                      <div className="flex items-center justify-between">
+                        <span className="text-3xl font-bold text-orange-600">${item.price}</span>
+                        <Button
+                          className={`rounded-full px-6 py-2 font-semibold shadow-lg transition-all duration-200 transform hover:scale-105 ${
+                            safeCart.some(cartItem => cartItem.id === item.id) || justAdded === item.id
+                              ? 'bg-green-500 text-white border-0 hover:bg-green-600'
+                              : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0 hover:from-orange-600 hover:to-orange-700'
+                          }`}
+                          onClick={() => handleAddToCartWithFeedback({ 
+                            id: item.id, 
+                            name: item.name, 
+                            price: item.price, 
+                            quantity: 1, 
+                            image: item.image_url || item.image 
+                          })}
+                        >
+                          {safeCart.some(cartItem => cartItem.id === item.id) || justAdded === item.id ? "Added ✓" : "Add to Cart"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -369,80 +463,125 @@ function LandingPageContent() {
             <h2 className="text-4xl font-bold text-center text-orange-900 mb-12">Explore Our Menu</h2>
             <div className="grid md:grid-cols-4 gap-8">
               {/* Sidebar Menu */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                  <Menu className="w-5 h-5" />
-                  Menu
-                </h3>
-                <div className="space-y-2">
-                  <div
-                    className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 cursor-pointer ${activeCategory === "burger"
-                      ? "bg-orange-600 text-white"
-                      : "text-orange-800 hover:bg-orange-100"
-                      }`}
-                    onClick={() => setActiveCategory("burger")}
-                  >
-                    <Image src="/cheese_burger-removebg-preview.png" alt="Burger" width={24} height={24} className="rounded-full" />
-                    <span>Burger</span>
-                  </div>
-                  <div
-                    className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 cursor-pointer ${activeCategory === "drink"
-                      ? "bg-orange-600 text-white"
-                      : "text-orange-800 hover:bg-orange-100"
-                      }`}
-                    onClick={() => setActiveCategory("drink")}
-                  >
-                    <Image src="/CokeinCan-removebg-preview.png" alt="Drink" width={24} height={24} className="rounded-full" />
-                    <span>Drink</span>
-                  </div>
-                  <div
-                    className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 cursor-pointer ${activeCategory === "ice-cream"
-                      ? "bg-orange-600 text-white"
-                      : "text-orange-800 hover:bg-orange-100"
-                      }`}
-                    onClick={() => setActiveCategory("ice-cream")}
-                  >
-                    <Image src="/Strawberry-Ice-Cream-removebg-preview.png" alt="Ice Cream" width={24} height={24} className="rounded-full" />
-                    <span>Ice Cream</span>
-                  </div>
+              <aside className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6">
+                <h4 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800">
+                  <Menu className="w-5 h-5 text-orange-500" /> Menu
+                </h4>
+                <div className="space-y-3">
+                  {/* Show all categories dynamically from database */}
+                  {getAllCategories().map(category => {
+                    const categoryInfo = getCategoryInfo(category);
+                    
+                    return (
+                      <div
+                        key={category}
+                        className={`px-4 py-3 rounded-xl font-medium flex items-center gap-3 cursor-pointer transition-all duration-200 ${
+                          activeCategory === category 
+                            ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg" 
+                            : "text-orange-800 hover:bg-orange-50 hover:shadow-md"
+                        }`}
+                        onClick={() => setActiveCategory(category)}
+                      >
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-white/20">
+                          <Image 
+                            src={categoryInfo.icon} 
+                            alt={categoryInfo.name} 
+                            width={32} 
+                            height={32} 
+                            className="w-full h-full object-cover" 
+                          />
+                        </div>
+                        <span>{categoryInfo.name} ({getCategoryCount(category)})</span>
+                      </div>
+                    );
+                  })}
+                  
                   <Link href="/Reservation">
-                    <div className="text-orange-800 px-4 py-2 hover:bg-orange-100 rounded-lg cursor-pointer">
+                    <div className="text-orange-800 px-4 py-3 hover:bg-orange-50 hover:shadow-md rounded-xl cursor-pointer transition-all duration-200 font-medium">
                       Reservation
                     </div>
                   </Link>
                 </div>
-              </div>
+              </aside>
 
               {/* Menu Items Grid */}
-              <div className="md:col-span-3 grid md:grid-cols-3 gap-6">
-                {menuItems.filter(item => {
-                  if (activeCategory === "burger") return item.category === "burger";
-                  if (activeCategory === "drink") return item.category === "drink";
-                  if (activeCategory === "ice-cream") return item.category === "ice-cream";
-                  return false; // Only show items for selected category
-                }).map((item, index) => (
-                  <Card key={index} className="overflow-hidden shadow-lg transition-transform duration-200 hover:scale-105">
-                    <div className="aspect-square relative">
-                      <Image
-                        src={`${item.image}?height=200&width=200&query=${item.name.toLowerCase()}`}
-                        alt={item.name}
-                        fill
-                        className="object-cover"
-                      />
+              <div className="md:col-span-3">
+                {loadingMenu ? (
+                  <div className="text-center py-8">Loading menu...</div>
+                ) : !activeCategory ? (
+                  <div className="flex flex-col items-center justify-center h-64 w-full bg-gradient-to-br from-orange-100 to-orange-200 rounded-2xl">
+                    <span className="text-2xl text-orange-600 font-bold mb-2">
+                      Select a category to view items
+                    </span>
+                  </div>
+                ) : filteredItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-64 w-full bg-gradient-to-br from-orange-100 to-orange-200 rounded-2xl">
+                    <span className="text-2xl text-orange-600 font-bold mb-2">
+                      No {getCategoryInfo(activeCategory).name} items available
+                    </span>
+                    <span className="text-lg text-orange-500">
+                      More {getCategoryInfo(activeCategory).name} items will be available soon!
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-6">
+                      <h3 className="text-2xl font-bold text-orange-900">
+                        {getCategoryInfo(activeCategory).name} ({filteredItems.length} items)
+                      </h3>
+                      <p className="text-orange-700 mt-1">
+                        Choose from our delicious {getCategoryInfo(activeCategory).name.toLowerCase()} selection
+                      </p>
                     </div>
-                    <CardContent className="p-4">
-                      <h4 className="font-bold text-center mb-2">{item.name}</h4>
-                      <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-orange-600">${item.price}</span>
-                        <Badge className="bg-orange-600 text-white" onClick={() => addToCart({ ...item, quantity: 1 })}>Add to cart</Badge>
-                        <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                          <span className="text-xs">{item.rating}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    <div className="grid md:grid-cols-3 gap-6">
+                      {filteredItems
+                        .sort((a, b) => {
+                          if (b.rating !== a.rating) {
+                            return (b.rating || 0) - (a.rating || 0);
+                          }
+                          return a.name.localeCompare(b.name);
+                        })
+                        .map((item, index) => {
+                          const isInCart = safeCart.some(cartItem => cartItem.id === item.id) || justAdded === item.id;
+                          return (
+                            <Card key={item.id} className="group bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-0 rounded-xl">
+                              <div className="relative overflow-hidden bg-gradient-to-br from-orange-50 to-orange-100">
+                                <Image
+                                  src={getImageSrc(item.image_url || item.image)}
+                                  alt={item.name}
+                                  width={250}
+                                  height={200}
+                                  className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+                                />
+                                <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 shadow-md">
+                                  <div className="flex items-center gap-1">
+                                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                                    <span className="text-xs font-semibold text-gray-700">{item.rating}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <CardContent className="p-4 space-y-3">
+                                <h4 className="font-bold text-center text-gray-800 group-hover:text-orange-600 transition-colors duration-200">{item.name}</h4>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-lg font-bold text-orange-600">${item.price}</span>
+                                  <Badge
+                                    className={`cursor-pointer font-semibold transition-all duration-200 transform hover:scale-105 ${
+                                      isInCart 
+                                        ? "bg-green-500 text-white hover:bg-green-600" 
+                                        : "bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700"
+                                    }`}
+                                    onClick={() => handleAddToCartWithFeedback({ ...item, quantity: 1 })}
+                                  >
+                                    {isInCart ? "Added ✓" : "Add to cart"}
+                                  </Badge>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -76,22 +76,23 @@ export default function AboutManagement() {
   if (!isAdmin()) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-orange-100 border-b border-orange-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 onClick={() => router.push('/admin/dashboard')}
+                className="text-orange-600 hover:bg-orange-200"
               >
                 ← Back to Dashboard
               </Button>
-              <h1 className="text-2xl font-bold text-gray-900">About Page Management</h1>
+              <h1 className="text-2xl font-bold text-orange-700">About Page Management</h1>
             </div>
             <Link href="/Aboutus" target="_blank">
-              <Button variant="outline">
+              <Button variant="outline" className="border-orange-400 text-orange-600 hover:bg-orange-50">
                 View Live Page
               </Button>
             </Link>
@@ -106,10 +107,10 @@ export default function AboutManagement() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Edit Form */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">Edit About Content</h2>
+              <h2 className="text-xl font-semibold mb-4 text-orange-700">Edit About Content</h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-orange-700 mb-2">
                     Page Title
                   </label>
                   <Input
@@ -121,7 +122,7 @@ export default function AboutManagement() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-orange-700 mb-2">
                     Subtitle
                   </label>
                   <Input
@@ -132,7 +133,7 @@ export default function AboutManagement() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-orange-700 mb-2">
                     Main Content
                   </label>
                   <Textarea
@@ -147,14 +148,14 @@ export default function AboutManagement() {
                 <Button
                   type="submit"
                   disabled={saving}
-                  className="w-full bg-orange-500 hover:bg-orange-600"
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                 >
                   {saving ? 'Saving...' : 'Update About Page'}
                 </Button>
               </form>
 
               {content && (
-                <div className="mt-4 p-3 bg-gray-50 rounded text-sm text-gray-600">
+                <div className="mt-4 p-3 bg-orange-50 rounded text-sm text-orange-700">
                   Last updated: {new Date(content.updated_at).toLocaleString()}
                 </div>
               )}
@@ -162,19 +163,19 @@ export default function AboutManagement() {
 
             {/* Preview */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">Preview</h2>
+              <h2 className="text-xl font-semibold mb-4 text-orange-700">Preview</h2>
               <div className="prose max-w-none">
-                <h1 className="text-4xl font-bold text-gray-800 mb-4" style={{ fontFamily: "serif" }}>
+                <h1 className="text-4xl font-bold text-orange-700 mb-4" style={{ fontFamily: "serif" }}>
                   {formData.title || 'About Us'}
                 </h1>
                 
                 {formData.subtitle && (
-                  <p className="text-lg italic text-gray-700 mb-6">
+                  <p className="text-lg italic text-orange-600 mb-6">
                     {formData.subtitle}
                   </p>
                 )}
 
-                <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                <div className="text-orange-700 leading-relaxed whitespace-pre-wrap">
                   {formData.content || 'Content will appear here...'}
                 </div>
               </div>

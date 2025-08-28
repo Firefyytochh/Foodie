@@ -53,6 +53,7 @@ export async function addMenuItem(formData: FormData) {
     const rating = parseFloat(formData.get('rating') as string);
     const description = formData.get('description') as string;
     const imageFile = formData.get('image') as File;
+    const category = formData.get('category') as string;
 
     let image_url = null;
 
@@ -85,7 +86,8 @@ export async function addMenuItem(formData: FormData) {
         price,
         rating,
         description,
-        image_url
+        image_url,
+        category
       }])
       .select()
       .single();
