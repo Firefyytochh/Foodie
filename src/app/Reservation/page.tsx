@@ -358,7 +358,7 @@ export default function FoodieReservation() {
               <div className="space-y-2 text-orange-200">
                 <div className="flex items-center gap-2">
                   <Mail className="w-4 h-4" />
-                  <span>Foodieburger@gmail.com</span>
+                  <a href="mailto:foodieburgerr@gmail.com" className="underline">foodieburgerr@gmail.com</a>
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone className="w-4 h-4" />

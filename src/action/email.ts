@@ -167,7 +167,7 @@ export async function sendVerificationCode(email: string): Promise<{
                 If you didn't request this code, please ignore this email or contact our support team.
               </p>
               <p style="font-size: 12px; color: #999; text-align: center; margin: 10px 0 0 0;">
-                © 2024 Foodie App. Made with ❤️ by food lovers.
+                © 2025 Foodie App. Made with ❤️ by food lovers.
               </p>
             </div>
           </div>
