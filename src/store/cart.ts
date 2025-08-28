@@ -6,7 +6,11 @@ interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  image_url?: string;
   image?: string;
+  rating?: number;
+  description?: string;
+  category?: string;
 }
 
 interface CartStore {
@@ -15,49 +19,96 @@ interface CartStore {
   removeFromCart: (id: string) => void;
   decreaseQuantity: (id: string) => void;
   clearCart: () => void;
-  cartItemCount: number; // Add this line
+  cartItemCount: number;
 }
 
-const useCartStoreInternal = create<CartStore>()(
-  persist(
-    (set, get) => ({
-      items: [],
-      cartItemCount: 0, // Initialize cartItemCount
-      addToCart: (item) =>
-        set((state) => {
-          const existingItem = state.items.find((i) => i.id === item.id);
-          let updatedItems;
-          if (existingItem) {
-            updatedItems = state.items.map((i) =>
-              i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
-            );
-          } else {
-            updatedItems = [...state.items, { ...item, quantity: 1 }];
-          }
-          return { items: updatedItems, cartItemCount: updatedItems.reduce((total, item) => total + item.quantity, 0) };
-        }),
-      removeFromCart: (id) =>
-        set((state) => {
-          const updatedItems = state.items.filter((item) => item.id !== id);
-          return { items: updatedItems, cartItemCount: updatedItems.reduce((total, item) => total + item.quantity, 0) };
-        }),
-      decreaseQuantity: (id) =>
-        set((state) => {
-          const updatedItems = state.items.map((item) =>
-            item.id === id
-              ? { ...item, quantity: item.quantity > 1 ? item.quantity - 1 : 1 }
-              : item
-          );
-          return { items: updatedItems, cartItemCount: updatedItems.reduce((total, item) => total + item.quantity, 0) };
-        }),
-      clearCart: () => set({ items: [], cartItemCount: 0 }),
-    }),
-    {
-      name: 'cart-storage', // unique name
-    }
-  )
-);
+export const getUseCartStore = () => {
+  return create<CartStore>()(
+    persist(
+      (set, get) => ({
+        items: [],
+        cartItemCount: 0,
 
-export const getUseCartStore = () => useCartStoreInternal;
+        addToCart: (newItem: CartItem) => {
+          const items = get().items;
+          const existingItem = items.find((item) => item.id === newItem.id);
+
+          if (existingItem) {
+            set({
+              items: items.map((item) =>
+                item.id === newItem.id
+                  ? { ...item, quantity: item.quantity + 1 }
+                  : item
+              ),
+            });
+          } else {
+            set({
+              items: [...items, { ...newItem, quantity: 1 }],
+            });
+          }
+
+          // Update cart count
+          const updatedItems = get().items;
+          set({
+            cartItemCount: updatedItems.reduce(
+              (total, item) => total + item.quantity,
+              0
+            ),
+          });
+        },
+
+        removeFromCart: (id: string) => {
+          set({
+            items: get().items.filter((item) => item.id !== id),
+          });
+
+          // Update cart count
+          const updatedItems = get().items;
+          set({
+            cartItemCount: updatedItems.reduce(
+              (total, item) => total + item.quantity,
+              0
+            ),
+          });
+        },
+
+        decreaseQuantity: (id: string) => {
+          const items = get().items;
+          const existingItem = items.find((item) => item.id === id);
+
+          if (existingItem && existingItem.quantity > 1) {
+            set({
+              items: items.map((item) =>
+                item.id === id
+                  ? { ...item, quantity: item.quantity - 1 }
+                  : item
+              ),
+            });
+          } else {
+            set({
+              items: items.filter((item) => item.id !== id),
+            });
+          }
+
+          // Update cart count
+          const updatedItems = get().items;
+          set({
+            cartItemCount: updatedItems.reduce(
+              (total, item) => total + item.quantity,
+              0
+            ),
+          });
+        },
+
+        clearCart: () => {
+          set({ items: [], cartItemCount: 0 });
+        },
+      }),
+      {
+        name: 'cart-storage',
+      }
+    )
+  );
+};
 
 

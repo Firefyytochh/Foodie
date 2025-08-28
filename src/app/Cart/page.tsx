@@ -15,9 +15,42 @@ export default function CartPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Only put necessary code here, NO navigation
-    console.log('Cart loaded with items:', cartItems.length);
+    console.log('Cart items with image data:', cartItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      image: item.image,
+      image_url: item.image_url
+    })));
   }, [cartItems]);
+
+  // Enhanced image source helper function
+  const getImageSrc = (item: any) => {
+    console.log('Getting image for item:', item.name, {
+      image: item.image,
+      image_url: item.image_url
+    });
+
+    // Check for image_url first (primary)
+    if (item.image_url) {
+      // If it's already a full URL, use it
+      if (item.image_url.startsWith('http://') || item.image_url.startsWith('https://')) {
+        return item.image_url;
+      }
+      // If it's a relative path, make it absolute
+      return item.image_url.startsWith('/') ? item.image_url : `/${item.image_url}`;
+    }
+    
+    // Fallback to image property
+    if (item.image) {
+      if (item.image.startsWith('http://') || item.image.startsWith('https://')) {
+        return item.image;
+      }
+      return item.image.startsWith('/') ? item.image : `/${item.image}`;
+    }
+    
+    // Default fallback image
+    return '/placeholder-food.jpg'; // or '/file.svg' if you prefer
+  };
 
   const handleIncreaseQuantity = (id: string) => {
     const item = cartItems.find(item => item.id === id);
@@ -97,17 +130,33 @@ export default function CartPage() {
             <div className="space-y-4 mb-8">
               {cartItems.map((item) => (
                 <div key={item.id} className="bg-white rounded-lg shadow-md p-6 flex items-center gap-4">
-                  <Image
-                    src={item.image || '/file.svg'} // Provide a fallback image
-                    alt={item.name}
-                    width={80}
-                    height={80}
-                    className="rounded-lg object-cover"
-                  />
+                  <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    <Image
+                      src={getImageSrc(item)}
+                      alt={item.name}
+                      fill
+                      className="object-cover"
+                      sizes="80px"
+                      onError={(e) => {
+                        console.log('Image failed to load:', getImageSrc(item));
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/file.svg'; // Fallback image
+                      }}
+                      onLoad={() => {
+                        console.log('Image loaded successfully:', getImageSrc(item));
+                      }}
+                    />
+                  </div>
                   
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-800">{item.name}</h3>
                     <p className="text-orange-600 font-bold">${item.price.toFixed(2)}</p>
+                    {/* Show description if available, otherwise show nothing */}
+                    {item.description && (
+                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                        {item.description}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3">
@@ -161,7 +210,6 @@ export default function CartPage() {
                   </Button>
                 </Link>
                 
-                {/* This should go to PAYMENT, not Reservation */}
                 <div className="flex-1">
                   <Button
                     onClick={() => router.push('/payment')}

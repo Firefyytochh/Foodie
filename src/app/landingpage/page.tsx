@@ -137,9 +137,17 @@ function LandingPageContent() {
     fetchComments(true);
   };
 
+  // Fix the useEffect that's causing the infinite loop
   useEffect(() => {
-    fetchComments(); // Load initial comments
-  }, [fetchComments]);
+    // Only fetch comments once when component mounts
+    fetchComments();
+  }, []); // Empty dependency array - only run once on mount
+
+  // If you need to refetch when certain values change, create separate useEffects
+  useEffect(() => {
+    // Only refetch if you specifically need to when certain conditions change
+    // Be very careful about what dependencies you add here
+  }, [/* specific dependencies only */]);
 
   useEffect(() => {
     const category = searchParams.get('category');
@@ -223,12 +231,29 @@ function LandingPageContent() {
   };
 
   // Add this function for Add to Cart button
-  const handleAddToCartWithFeedback = (item: { id: string; name: string; price: number; quantity: number; image: string }) => {
-    if (!safeCart.some(cartItem => cartItem.id === item.id)) {
-      addToCart(item);
-      setJustAdded(item.id);
-      setTimeout(() => setJustAdded(null), 2000); // Button stays "Added" for 2 seconds
-    }
+  const handleAddToCartWithFeedback = (item: any) => {
+    console.log('Adding item to cart from category:', item);
+    
+    // Ensure the item has all required properties including proper image data
+    const cartItem = {
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      image_url: item.image_url, // Make sure this is included
+      image: item.image || item.image_url, // Fallback
+      quantity: 1,
+      rating: item.rating,
+      description: item.description,
+      category: item.category
+    };
+    
+    console.log('Cart item being added:', cartItem);
+    addToCart(cartItem);
+    setJustAdded(item.id);
+    
+    setTimeout(() => {
+      setJustAdded(null);
+    }, 2000);
   };
 
   // Fetch menu items from database
@@ -570,7 +595,12 @@ function LandingPageContent() {
                                         ? "bg-green-500 text-white hover:bg-green-600" 
                                         : "bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700"
                                     }`}
-                                    onClick={() => handleAddToCartWithFeedback({ ...item, quantity: 1 })}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      console.log('Badge clicked for item:', item); // Debug log
+                                      handleAddToCartWithFeedback(item);
+                                    }}
                                   >
                                     {isInCart ? "Added ✓" : "Add to cart"}
                                   </Badge>
