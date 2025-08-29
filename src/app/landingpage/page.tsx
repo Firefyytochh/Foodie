@@ -7,12 +7,12 @@ import { Card, CardContent } from "../../components/ui/card"
 import { Star, ShoppingCart, User, Menu, Check, Edit, Trash2, Mail, Phone, X } from "lucide-react"
 import Link from "next/link"
 import { getUseCartStore } from "../../store/cart"
-import { menuItems } from "../../lib/menuData";
 import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from 'next/navigation';
 import { addComment, getComments } from "../../action/comments";
 import { getCurrentUser, logoutUser } from "../../action/auth";
 import { getMenuItems } from "../../action/admin";
+import { createClient } from "../../utils/supabase/client";
 
 interface Comment {
   id: string;
@@ -51,7 +51,7 @@ function LandingPageContent() {
   const safeCart = Array.isArray(items) ? items : [];
   const [activeCategory, setActiveCategory] = useState<string>("");
   const [justAdded, setJustAdded] = useState<string | null>(null);
-  const [selectedItem, setSelectedItem] = useState<any | null>(null); // New state for modal
+  const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -64,21 +64,69 @@ function LandingPageContent() {
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   const [dbMenuItems, setDbMenuItems] = useState<any[]>([]);
   const [loadingMenu, setLoadingMenu] = useState(true);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // Fixed authentication check
+  const checkAuthentication = async () => {
+    try {
+      const supabase = createClient();
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Auth check error:', error);
+        setUser(null);
+        return null;
+      }
+      
+      if (session?.user) {
+        setUser(session.user as User);
+        return session.user;
+      } else {
+        setUser(null);
+        return null;
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setUser(null);
+      return null;
+    }
+  };
+
+  // Initial auth check and listener
   useEffect(() => {
-    const fetchUser = async () => {
-      const { user: currentUser } = await getCurrentUser();
-      setUser(currentUser);
+    const initAuth = async () => {
+      setLoading(true);
+      await checkAuthentication();
+      setLoading(false);
     };
-    fetchUser();
+
+    initAuth();
+
+    // Listen for auth changes
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email || 'No user');
+      
+      if (session?.user) {
+        setUser(session.user as User);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleLogout = async () => {
-    await logoutUser();
-    setUser(null);
-    router.push('/login');
+    try {
+      await logoutUser();
+      setUser(null);
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const fetchComments = async (loadMore: boolean = false) => {
@@ -305,6 +353,17 @@ function LandingPageContent() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100">
       <header className="sticky top-0 z-50 bg-gradient-to-r from-orange-400 to-orange-300 px-6 py-4">
@@ -339,20 +398,29 @@ function LandingPageContent() {
                     </Badge>
                   )}
                 </Link>
-                <Link href="/Profile">
-                  <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
-                </Link>
-                <Button onClick={handleLogout} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md">
+                <div className="flex items-center space-x-2">
+                  <span className="text-white text-sm hidden md:block">
+                    {user.email}
+                  </span>
+                  <Link href="/Profile">
+                    <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
+                  </Link>
+                </div>
+                <Button onClick={handleLogout} variant="outline" className="text-orange-500 border-white hover:bg-white">
                   Logout
                 </Button>
               </>
             ) : (
               <>
                 <Link href="/login">
-                  <Button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md">Login</Button>
+                  <Button variant="outline" className="text-orange-500 border-white hover:bg-white">
+                    Login
+                  </Button>
                 </Link>
                 <Link href="/Signup">
-                  <Button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md">Sign Up</Button>
+                  <Button variant="outline" className="text-orange-500 border-white hover:bg-white">
+                    Sign Up
+                  </Button>
                 </Link>
               </>
             )}
@@ -967,26 +1035,26 @@ function LandingPageContent() {
               <div className="space-y-2 text-orange-200 underline">
                 <Link href="/Aboutus">About us</Link>
               </div>
-              <div className="space-y-2 text-orange-200  underline">
+              <div className="space-y-2 text-orange-200 underline">
                 <Link href="/menu">Menu</Link>
               </div>
-              <div className="space-y-2 text-orange-200  underline">
+              <div className="space-y-2 text-orange-200 underline">
                 <Link href="/Cart">Cart</Link>
               </div>
             </div>
 
             <div>
               <h4 className="font-bold mb-4">Main Menu</h4>
-              <div className="space-y-2 text-orange-200  underline">
-                <Link href="/landingpage?category=burger ">Burger</Link>
+              <div className="space-y-2 text-orange-200 underline">
+                <Link href="/landingpage?category=burger">Burger</Link>
               </div>
-              <div className="space-y-2 text-orange-200  underline">
+              <div className="space-y-2 text-orange-200 underline">
                 <Link href="/landingpage?category=drink">Drink</Link>
               </div>
-              <div className="space-y-2 text-orange-200  underline">
+              <div className="space-y-2 text-orange-200 underline">
                 <Link href="/landingpage?category=ice-cream">Ice Cream</Link>
               </div>
-              <div className="space-y-2 text-orange-200  underline">
+              <div className="space-y-2 text-orange-200 underline">
                 <Link href="/landingpage?category=dessert">Dessert</Link>
               </div>
             </div>

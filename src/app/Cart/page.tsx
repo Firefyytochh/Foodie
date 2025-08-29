@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Trash2, Plus, Minus, ShoppingCart, User } from "lucide-react"
 import Image from "next/image"
@@ -8,39 +8,96 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { getUseCartStore } from "../../store/cart"
 import { Badge } from "@/components/ui/badge"
+import { createClient } from "@/utils/supabase/client"
 
 export default function CartPage() {
   const useCartStore = getUseCartStore();
   const { items: cartItems, addToCart, removeFromCart, decreaseQuantity, cartItemCount } = useCartStore();
   const router = useRouter();
+  type UserType = { email: string } | null;
+  const [user, setUser] = useState<UserType>(null);
+  const [loading, setLoading] = useState(true);
+  const [checkingAuth, setCheckingAuth] = useState(false);
 
+  // Simple and reliable auth check
+  const checkAuthentication = async () => {
+    try {
+      const supabase = createClient();
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      console.log('Auth check - Session:', session?.user?.email || 'No user');
+      
+      if (session?.user?.email) {
+        setUser({ email: session.user.email });
+        return true;
+      } else {
+        setUser(null);
+        return false;
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setUser(null);
+      return false;
+    }
+  };
+
+  // Initial auth check
   useEffect(() => {
-    console.log('Cart items with image data:', cartItems.map(item => ({
-      id: item.id,
-      name: item.name,
-      image: item.image,
-      image_url: item.image_url
-    })));
-  }, [cartItems]);
+    const initialCheck = async () => {
+      setLoading(true);
+      await checkAuthentication();
+      setLoading(false);
+    };
 
-  // Enhanced image source helper function
-  const getImageSrc = (item: any) => {
-    console.log('Getting image for item:', item.name, {
-      image: item.image,
-      image_url: item.image_url
+    initialCheck();
+
+    // Listen for auth changes
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email || 'No user');
+      
+      if (session?.user?.email) {
+        setUser({ email: session.user.email });
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
     });
 
-    // Check for image_url first (primary)
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Check auth when page becomes visible (after login redirect)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden) {
+        console.log('Page visible, checking auth...');
+        await checkAuthentication();
+      }
+    };
+
+    const handleFocus = async () => {
+      console.log('Page focused, checking auth...');
+      await checkAuthentication();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
+  const getImageSrc = (item: any) => {
     if (item.image_url) {
-      // If it's already a full URL, use it
       if (item.image_url.startsWith('http://') || item.image_url.startsWith('https://')) {
         return item.image_url;
       }
-      // If it's a relative path, make it absolute
       return item.image_url.startsWith('/') ? item.image_url : `/${item.image_url}`;
     }
     
-    // Fallback to image property
     if (item.image) {
       if (item.image.startsWith('http://') || item.image.startsWith('https://')) {
         return item.image;
@@ -48,8 +105,7 @@ export default function CartPage() {
       return item.image.startsWith('/') ? item.image : `/${item.image}`;
     }
     
-    // Default fallback image
-    return '/placeholder-food.jpg'; // or '/file.svg' if you prefer
+    return '/placeholder-food.jpg';
   };
 
   const handleIncreaseQuantity = (id: string) => {
@@ -67,7 +123,29 @@ export default function CartPage() {
     removeFromCart(id);
   };
 
+  const handleCheckout = async () => {
+    console.log('🛒 Checkout clicked - navigating to payment');
+    setCheckingAuth(true);
+    
+    // Just navigate to payment page without any auth checks
+    setTimeout(() => {
+      setCheckingAuth(false);
+      router.push('/payment');
+    }, 500);
+  };
+
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100">
@@ -102,9 +180,22 @@ export default function CartPage() {
                 </Badge>
               )}
             </Link>
-            <Link href="/Profile">
-              <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
-            </Link>
+            {user ? (
+              <div className="flex items-center space-x-2">
+                <span className="text-white text-sm hidden md:block">
+                  {user.email}
+                </span>
+                <Link href="/Profile">
+                  <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
+                </Link>
+              </div>
+            ) : (
+              <Link href="/login">
+                <Button variant="outline" className="text-orange-500 border-white hover:bg-white">
+                  Login
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -138,12 +229,8 @@ export default function CartPage() {
                       className="object-cover"
                       sizes="80px"
                       onError={(e) => {
-                        console.log('Image failed to load:', getImageSrc(item));
                         const target = e.target as HTMLImageElement;
-                        target.src = '/file.svg'; // Fallback image
-                      }}
-                      onLoad={() => {
-                        console.log('Image loaded successfully:', getImageSrc(item));
+                        target.src = '/file.svg';
                       }}
                     />
                   </div>
@@ -151,7 +238,6 @@ export default function CartPage() {
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-800">{item.name}</h3>
                     <p className="text-orange-600 font-bold">${item.price.toFixed(2)}</p>
-                    {/* Show description if available, otherwise show nothing */}
                     {item.description && (
                       <p className="text-sm text-gray-500 mt-1 line-clamp-2">
                         {item.description}
@@ -212,10 +298,11 @@ export default function CartPage() {
                 
                 <div className="flex-1">
                   <Button
-                    onClick={() => router.push('/payment')}
-                    className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-lg transition-transform duration-200 hover:scale-105"
+                    onClick={handleCheckout}
+                    disabled={checkingAuth}
+                    className="w-full font-semibold py-3 rounded-lg transition-transform duration-200 bg-orange-500 hover:bg-orange-600 text-white hover:scale-105 disabled:bg-gray-400"
                   >
-                    Check Out
+                    {checkingAuth ? 'Checking...' : 'Proceed to Payment'}
                   </Button>
                 </div>
               </div>

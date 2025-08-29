@@ -13,18 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getUseCartStore } from "@/store/cart"
 import { createPayment } from "@/action/payment"
 import { placeOrder } from "@/action/order";
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@/utils/supabase/client"; // Use the same client as other pages
 import { useRouter } from "next/navigation"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 
 export default function CheckoutPage() {
     const useCartStore = getUseCartStore();
-    const { items, clearCart } = useCartStore();
+    const { items, clearCart, cartItemCount } = useCartStore();
     const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const shippingCost = 4;
     const subtotal = totalPrice;
@@ -37,29 +31,80 @@ export default function CheckoutPage() {
     const formRef = useRef<HTMLFormElement>(null);
     const router = useRouter();
 
+    // Use the same authentication pattern as other pages
+    const checkAuthentication = async () => {
+        try {
+            const supabase = createClient();
+            const { data: { session }, error } = await supabase.auth.getSession();
+            
+            console.log('💳 Payment auth check:', {
+                hasSession: !!session,
+                userEmail: session?.user?.email,
+                error: error?.message
+            });
+            
+            if (session?.user?.email) {
+                setUser(session.user);
+                return session.user;
+            } else {
+                setUser(null);
+                return null;
+            }
+        } catch (error) {
+            console.error('💥 Payment auth error:', error);
+            setUser(null);
+            return null;
+        }
+    };
+
     // Get user on component mount
     useEffect(() => {
         const getUser = async () => {
-            try {
-                const { data: { user }, error } = await supabase.auth.getUser();
-                
-                if (error || !user) {
-                    alert('Please log in to make a payment');
-                    router.push('/login');
-                    return;
-                }
-                
-                setUser(user);
-            } catch (error) {
-                console.error('Auth error:', error);
-                router.push('/login');
-            } finally {
-                setLoading(false);
-            }
+            setLoading(true);
+            await checkAuthentication();
+            setLoading(false);
         };
 
         getUser();
-    }, [supabase.auth, router]);
+
+        // Listen for auth state changes using same pattern as other pages
+        const supabase = createClient();
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('🔄 Payment auth state changed:', event, session?.user?.email || 'No user');
+            
+            if (session?.user?.email) {
+                setUser(session.user);
+            } else {
+                setUser(null);
+            }
+            setLoading(false);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    // Check auth when page becomes visible (like cart page)
+    useEffect(() => {
+        const handleVisibilityChange = async () => {
+            if (!document.hidden) {
+                console.log('💳 Payment page visible, checking auth...');
+                await checkAuthentication();
+            }
+        };
+
+        const handleFocus = async () => {
+            console.log('💳 Payment page focused, checking auth...');
+            await checkAuthentication();
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('focus', handleFocus);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleFocus);
+        };
+    }, []);
 
     const generateOrderId = () => {
         return `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -78,6 +123,8 @@ export default function CheckoutPage() {
     const handlePayment = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
+        console.log('🚀 Payment form submitted');
+
         const formData = new FormData(event.currentTarget);
         const customerPhone = formData.get('phoneNumber') as string;
         const customerLocation = formData.get('location') as string;
@@ -92,12 +139,6 @@ export default function CheckoutPage() {
             return;
         }
 
-        if (!user) {
-            alert('Please log in to make a payment');
-            router.push('/login');
-            return;
-        }
-        
         if (!selectedPaymentMethod) {
             alert('Please select a payment method');
             return;
@@ -110,39 +151,73 @@ export default function CheckoutPage() {
 
         setIsSubmitting(true);
 
-        const paymentData = {
-            orderId: generateOrderId(),
-            paymentMethod: selectedPaymentMethod,
-            items: items.map(item => ({
-                id: item.id,
-                name: item.name,
-                price: item.price,
-                quantity: item.quantity,
-                image: item.image
-            })),
-            subtotal: subtotal,
-            shippingCost: shippingCost,
-            totalAmount: finalTotal,
-            customerPhone: customerPhone,
-            customerLocation: customerLocation,
-            ...(selectedPaymentMethod === 'card' && {
-                cardData: {
-                    cardholderName: formData.get('cardholderName') as string,
-                    cardLastFour: (formData.get('cardNumber') as string)?.slice(-4) || '',
-                    cardType: 'Card'
-                }
-            })
-        };
+        try {
+            // Check current auth state first
+            console.log('🔍 Current user state before payment:', user?.email || 'No user');
+            
+            // Always get fresh session like other pages do
+            const currentUser = await checkAuthentication();
+            
+            console.log('🔍 Fresh auth check result:', currentUser?.email || 'No user found');
 
-        // Pass userId as second parameter
-        const result = await createPayment(paymentData, user.id);
+            // If no authenticated user, show clear message
+            if (!currentUser) {
+                console.error('❌ No authenticated user found for payment');
+                alert('Please log in first, then try again.');
+                setIsSubmitting(false);
+                return;
+            }
 
-        if (result.error) {
-            alert(`Payment failed: ${result.error.message}`);
-        } else {
-            // --- ADD THIS: Save order to database ---
+            console.log('✅ Proceeding with payment for user:', currentUser.email);
+
+            // Create payment data
+            const paymentData = {
+                orderId: generateOrderId(),
+                paymentMethod: selectedPaymentMethod,
+                items: items.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    quantity: item.quantity,
+                    image: item.image || item.image_url
+                })),
+                subtotal: subtotal,
+                shippingCost: shippingCost,
+                totalAmount: finalTotal,
+                customerPhone: customerPhone,
+                customerLocation: customerLocation,
+                ...(selectedPaymentMethod === 'card' && {
+                    cardData: {
+                        cardholderName: formData.get('cardholderName') as string,
+                        cardLastFour: (formData.get('cardNumber') as string)?.slice(-4) || '',
+                        cardType: 'Card'
+                    }
+                })
+            };
+
+            console.log('💰 Creating payment with data:', {
+                orderId: paymentData.orderId,
+                method: paymentData.paymentMethod,
+                total: paymentData.totalAmount,
+                itemCount: paymentData.items.length,
+                userId: currentUser.id
+            });
+
+            // Process payment
+            const paymentResult = await createPayment(paymentData, currentUser.id);
+
+            if (paymentResult.error) {
+                console.error('❌ Payment failed:', paymentResult.error);
+                alert(`Payment failed: ${paymentResult.error.message || paymentResult.error}`);
+                setIsSubmitting(false);
+                return;
+            }
+
+            console.log('✅ Payment successful, creating order...');
+
+            // Create order data
             const orderData = {
-                user_id: user.id,
+                user_id: currentUser.id,
                 items: items,
                 total: finalTotal,
                 status: "pending",
@@ -151,18 +226,31 @@ export default function CheckoutPage() {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             };
-            const orderResult = await placeOrder(orderData);
-            if (!orderResult.success) {
-                alert("Order upload failed: " + orderResult.error);
-            }
-            // --- END ADD ---
 
-            alert('Payment successful!');
+            console.log('📦 Creating order...');
+
+            // Save order to database
+            const orderResult = await placeOrder(orderData);
+            
+            if (!orderResult.success) {
+                console.error('❌ Order creation failed:', orderResult.error);
+                console.log('⚠️ Payment succeeded but order save failed, continuing...');
+            } else {
+                console.log('✅ Order created successfully');
+            }
+
+            // Success - clear cart and redirect
+            console.log('🎉 Payment and order process completed successfully');
+            alert('Payment successful! Your order has been placed.');
             clearCart();
             router.push('/Paymentdone');
-        }
 
-        setIsSubmitting(false);
+        } catch (error) {
+            console.error('💥 Payment processing error:', error);
+            alert('Payment processing failed. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // Show loading while checking authentication
@@ -171,7 +259,7 @@ export default function CheckoutPage() {
             <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100 flex items-center justify-center">
                 <div className="text-center">
                     <div className="text-4xl mb-4">⏳</div>
-                    <p className="text-orange-800 text-lg">Checking authentication...</p>
+                    <p className="text-orange-800 text-lg">Loading payment page...</p>
                 </div>
             </div>
         );
@@ -201,12 +289,30 @@ export default function CheckoutPage() {
                     </nav>
 
                     <div className="flex items-center space-x-4">
-                        <Link href="/Cart">
+                        <Link href="/Cart" className="relative">
                             <ShoppingCart className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
+                            {cartItemCount > 0 && (
+                                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">
+                                    {cartItemCount}
+                                </Badge>
+                            )}
                         </Link>
-                        <Link href="/Profile">
-                            <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
-                        </Link>
+                        {user ? (
+                            <div className="flex items-center space-x-2">
+                                <span className="text-white text-sm hidden md:block">
+                                    {user.email}
+                                </span>
+                                <Link href="/Profile">
+                                    <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
+                                </Link>
+                            </div>
+                        ) : (
+                            <Link href="/login">
+                                <Button variant="outline" className="text-orange-500 border-white hover:bg-white">
+                                    Login
+                                </Button>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </header>
@@ -214,11 +320,21 @@ export default function CheckoutPage() {
             <main className="relative z-10 px-6 py-8">
                 <h1 className="text-5xl font-bold text-center text-gray-800 mb-12 italic">Check out</h1>
                 
-                {user && (
-                    <div className="text-center mb-8">
-                        <p className="text-lg text-gray-700">Welcome back, {user.email}!</p>
-                    </div>
-                )}
+                <div className="text-center mb-8">
+                    {user ? (
+                        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg max-w-md mx-auto">
+                            <p className="font-medium">✅ Logged in as: {user.email}</p>
+                            <p className="text-sm mt-1">Ready to process payment</p>
+                        </div>
+                    ) : (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg max-w-md mx-auto">
+                            <p className="font-medium">❌ Not logged in</p>
+                            <Link href="/login?redirect=payment" className="text-blue-600 underline hover:text-blue-800 mt-2 inline-block">
+                                Please log in to continue
+                            </Link>
+                        </div>
+                    )}
+                </div>
 
                 <form ref={formRef} onSubmit={handlePayment} className="max-w-6xl mx-auto">
                     <div className="mb-8">

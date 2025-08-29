@@ -72,8 +72,7 @@ export async function updatePasswordAfterVerification(newPassword: string) {
       return { error: error.message };
     }
 
-    // Sign out after password update for security
-    await supabase.auth.signOut();
+    // Don't automatically sign out - let user stay logged in
     
     return { success: true };
   } catch (error) {
@@ -210,5 +209,33 @@ export async function updateUserProfile(updates: {
       return { error: error.message };
     }
     return { error: "Failed to update profile." };
+  }
+}
+
+// Debug function to check session state
+export async function debugSessionState() {
+  const supabase = createClient();
+  
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    
+    console.log('Debug Session State:', {
+      hasSession: !!session,
+      sessionUser: session?.user?.email,
+      hasUser: !!userData.user,
+      directUser: userData.user?.email,
+      sessionError: error?.message,
+      userError: userError?.message
+    });
+    
+    return {
+      session,
+      user: userData.user,
+      errors: { sessionError: error, userError }
+    };
+  } catch (error) {
+    console.error('Debug session error:', error);
+    return { error };
   }
 }

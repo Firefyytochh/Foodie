@@ -12,7 +12,7 @@ import { format } from "date-fns"
 import { cn } from "@/lib/utils" 
 import { createReservation } from "../../action/reservation"
 import { useRouter } from "next/navigation"
-import { createClient } from "../../../utils/supabase/client"
+import { createClient } from "../../utils/supabase/client" // Fixed path
 
 interface User {
   id: string;
@@ -27,31 +27,81 @@ export default function FoodieReservation() {
     const [loading, setLoading] = useState(true);
     const formRef = useRef<HTMLFormElement>(null);
     const router = useRouter();
-    const supabase = createClient();
+
+    // Use the same authentication pattern as other pages
+    const checkAuthentication = async () => {
+        try {
+            const supabase = createClient();
+            const { data: { session }, error } = await supabase.auth.getSession();
+            
+            console.log('🏠 Reservation auth check:', {
+                hasSession: !!session,
+                userEmail: session?.user?.email,
+                error: error?.message
+            });
+            
+            if (session?.user?.email) {
+                setUser(session.user);
+                return session.user;
+            } else {
+                setUser(null);
+                return null;
+            }
+        } catch (error) {
+            console.error('💥 Reservation auth error:', error);
+            setUser(null);
+            return null;
+        }
+    };
 
     // Check if user is logged in
     useEffect(() => {
-        const checkUser = async () => {
-            try {
-                const { data: { user }, error } = await supabase.auth.getUser();
-                
-                if (error || !user) {
-                    alert('Please log in to make a reservation');
-                    router.push('/login');
-                    return;
-                }
-                
-                setUser(user);
-            } catch (error) {
-                console.error('Auth error:', error);
-                router.push('/login');
-            } finally {
-                setLoading(false);
+        const initAuth = async () => {
+            setLoading(true);
+            await checkAuthentication();
+            setLoading(false);
+        };
+
+        initAuth();
+
+        // Listen for auth state changes using same pattern as other pages
+        const supabase = createClient();
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('🔄 Reservation auth state changed:', event, session?.user?.email || 'No user');
+            
+            if (session?.user?.email) {
+                setUser(session.user);
+            } else {
+                setUser(null);
+            }
+            setLoading(false);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    // Check auth when page becomes visible (like other pages)
+    useEffect(() => {
+        const handleVisibilityChange = async () => {
+            if (!document.hidden) {
+                console.log('🏠 Reservation page visible, checking auth...');
+                await checkAuthentication();
             }
         };
 
-        checkUser();
-    }, [supabase.auth, router]);
+        const handleFocus = async () => {
+            console.log('🏠 Reservation page focused, checking auth...');
+            await checkAuthentication();
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('focus', handleFocus);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleFocus);
+        };
+    }, []);
 
     // Restrict phone input: only allow numbers starting with 0
     const validatePhone = (value: string) => {
@@ -71,56 +121,166 @@ export default function FoodieReservation() {
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        if (!user) {
+        // Check authentication before submission
+        const currentUser = await checkAuthentication();
+        
+        if (!currentUser) {
             alert('Please log in to make a reservation');
-            router.push('/login');
+            router.push('/login?redirect=reservation');
             return;
         }
 
         setIsSubmitting(true);
 
-        const formData = new FormData(event.currentTarget);
+        try {
+            // More robust form data collection
+            const form = event.target as HTMLFormElement;
+            const formData = new FormData(form);
 
-        // Phone validation
-        const phone = formData.get('phone') as string;
-        if (!validatePhone(phone)) {
-            alert('Phone number must start with 0 and be at least 8 digits.');
+            // Alternative method if above fails
+            if (!formData || formData.entries === undefined) {
+                // Manual form data collection as fallback
+                const formElements = form.elements as HTMLFormControlsCollection;
+                const manualFormData = new FormData();
+                
+                // Collect form data manually
+                const firstName = (formElements.namedItem('firstName') as HTMLInputElement)?.value || '';
+                const lastName = (formElements.namedItem('lastName') as HTMLInputElement)?.value || '';
+                const email = (formElements.namedItem('email') as HTMLInputElement)?.value || '';
+                const phone = (formElements.namedItem('phone') as HTMLInputElement)?.value || '';
+                const guestCount = (formElements.namedItem('guestCount') as HTMLInputElement)?.value || '';
+                const reservationTime = (formElements.namedItem('reservationTime') as HTMLInputElement)?.value || '';
+                const specialNotes = (formElements.namedItem('specialNotes') as HTMLTextAreaElement)?.value || '';
+
+                manualFormData.append('firstName', firstName);
+                manualFormData.append('lastName', lastName);
+                manualFormData.append('email', email);
+                manualFormData.append('phone', phone);
+                manualFormData.append('guestCount', guestCount);
+                manualFormData.append('reservationTime', reservationTime);
+                manualFormData.append('specialNotes', specialNotes);
+
+                // Use manual form data
+                const phone_val = manualFormData.get('phone') as string;
+                const email_val = manualFormData.get('email') as string;
+                const specialNotes_val = manualFormData.get('specialNotes') as string || '';
+
+                // Validations
+                if (!phone_val || !validatePhone(phone_val)) {
+                    alert('Phone number must start with 0 and be at least 8 digits.');
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                if (!email_val || !validateEmail(email_val)) {
+                    alert('Please enter a valid email address (e.g., Example@gmail.com).');
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                if (!validateSpecialNotes(specialNotes_val)) {
+                    alert('Special notes must be 200 characters or less.');
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                // Add the selected date
+                if (date) {
+                    manualFormData.set('reservationDate', format(date, 'yyyy-MM-dd'));
+                } else {
+                    alert('Please select a reservation date.');
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                // Use manual form data for submission
+                const result = await createReservation(manualFormData, currentUser.id);
+
+                if (result.error) {
+                    console.error('Reservation error:', result.error);
+                    alert(`Error: ${result.error.message || result.error}`);
+                } else {
+                    console.log('Reservation successful:', result);
+                    alert('Reservation created successfully!');
+                    
+                    // Reset form
+                    if (formRef.current) {
+                        formRef.current.reset();
+                    }
+                    setDate(new Date());
+                    
+                    router.push('/Rdone');
+                }
+                return;
+            }
+
+            // Standard validation if FormData worked
+            const phone = formData.get('phone') as string;
+            if (!phone || !validatePhone(phone)) {
+                alert('Phone number must start with 0 and be at least 8 digits.');
+                setIsSubmitting(false);
+                return;
+            }
+
+            const email = formData.get('email') as string;
+            if (!email || !validateEmail(email)) {
+                alert('Please enter a valid email address (e.g., Example@gmail.com).');
+                setIsSubmitting(false);
+                return;
+            }
+
+            const specialNotes = formData.get('specialNotes') as string || '';
+            if (!validateSpecialNotes(specialNotes)) {
+                alert('Special notes must be 200 characters or less.');
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Add the selected date to form data
+            if (date) {
+                formData.set('reservationDate', format(date, 'yyyy-MM-dd'));
+            } else {
+                alert('Please select a reservation date.');
+                setIsSubmitting(false);
+                return;
+            }
+
+            console.log('Submitting reservation with data:', {
+                firstName: formData.get('firstName'),
+                lastName: formData.get('lastName'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                guestCount: formData.get('guestCount'),
+                reservationDate: formData.get('reservationDate'),
+                reservationTime: formData.get('reservationTime'),
+                specialNotes: formData.get('specialNotes'),
+                userId: currentUser.id
+            });
+
+            // Pass userId as second parameter
+            const result = await createReservation(formData, currentUser.id);
+
+            if (result.error) {
+                console.error('Reservation error:', result.error);
+                alert(`Error: ${result.error.message || result.error}`);
+            } else {
+                console.log('Reservation successful:', result);
+                alert('Reservation created successfully!');
+                
+                // Reset form
+                if (formRef.current) {
+                    formRef.current.reset();
+                }
+                setDate(new Date());
+                
+                router.push('/Rdone');
+            }
+        } catch (error) {
+            console.error('Reservation submission error:', error);
+            alert('Failed to create reservation. Please try again.');
+        } finally {
             setIsSubmitting(false);
-            return;
         }
-
-        // Email validation
-        const email = formData.get('email') as string;
-        if (!validateEmail(email)) {
-            alert('Please enter a valid email address (e.g., Example@gmail.com).');
-            setIsSubmitting(false);
-            return;
-        }
-
-        // Special notes validation
-        const specialNotes = formData.get('specialNotes') as string;
-        if (!validateSpecialNotes(specialNotes)) {
-            alert('Special notes must be 200 characters or less.');
-            setIsSubmitting(false);
-            return;
-        }
-
-        // Add the selected date to form data
-        if (date) {
-            formData.set('reservationDate', format(date, 'yyyy-MM-dd'));
-        }
-
-        // Pass userId as second parameter
-        const result = await createReservation(formData, user.id);
-
-        if (result.error) {
-            alert(`Error: ${result.error.message}`);
-        } else {
-            alert('Reservation created successfully!');
-            router.push('/Rdone');
-        }
-
-        setIsSubmitting(false);
     };
 
     // Show loading while checking authentication
@@ -129,7 +289,7 @@ export default function FoodieReservation() {
             <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100 flex items-center justify-center">
                 <div className="text-center">
                     <div className="text-4xl mb-4">⏳</div>
-                    <p className="text-orange-800 text-lg">Checking authentication...</p>
+                    <p className="text-orange-800 text-lg">Loading reservation page...</p>
                 </div>
             </div>
         );
@@ -153,18 +313,31 @@ export default function FoodieReservation() {
 
                     <nav className="hidden md:flex space-x-8">
                         <Link href="/landingpage" className="text-white hover:text-orange-100 transition-colors">Home</Link>
-                        <Link href="/about" className="text-white hover:text-orange-100 transition-colors">About Us</Link>
+                        <Link href="/Aboutus" className="text-white hover:text-orange-100 transition-colors">About Us</Link>
                         <Link href="/menu" className="text-white hover:text-orange-100 transition-colors">Menu</Link>
-                        <Link href="/contact" className="text-white hover:text-orange-100 transition-colors">Contact</Link>
+                        <Link href="#footer" className="text-white hover:text-orange-100 transition-colors">Contact</Link>
                     </nav>
 
                     <div className="flex items-center space-x-4">
-                        <Link href="/Cart">
+                        <Link href="/Cart" className="relative">
                             <ShoppingCart className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
                         </Link>
-                        <Link href="/Profile">
-                            <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
-                        </Link>
+                        {user ? (
+                            <div className="flex items-center space-x-2">
+                                <span className="text-white text-sm hidden md:block">
+                                    {user.email}
+                                </span>
+                                <Link href="/Profile">
+                                    <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
+                                </Link>
+                            </div>
+                        ) : (
+                            <Link href="/login">
+                                <Button variant="outline" className="text-orange-500 border-white hover:bg-white">
+                                    Login
+                                </Button>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </header>
@@ -172,21 +345,34 @@ export default function FoodieReservation() {
             {/* Thank You Message */}
             <div className="flex items-center justify-between px-6 py-8 bg-gradient-to-r from-orange-300 to-orange-200">
                 <h1 className="text-4xl font-bold text-gray-800 italic">Make Your Reservation</h1>
-                {user && (
-                    <p className="text-lg text-gray-700">Welcome, {user.email}!</p>
-                )}
+                <div className="text-center">
+                    {user ? (
+                        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded-lg">
+                            <p className="font-medium">✅ Logged in as: {user.email}</p>
+                        </div>
+                    ) : (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded-lg">
+                            <p className="font-medium">❌ Please log in to make a reservation</p>
+                            <Link href="/login?redirect=reservation" className="text-blue-600 underline hover:text-blue-800 text-sm">
+                                Click here to login
+                            </Link>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Main Content */}
             <div className="px-6 py-8">
-                {/* Foodie Logo Section */}
                 <div className="text-center mb-12">
-                                        <Image src="/logo.png" alt="Foodie Logo" width={96} height={96} className="h-24 w-auto mx-auto mb-4" />
+                    <Image src="/logo.png" alt="Foodie Logo" width={96} height={96} className="h-24 w-auto mx-auto mb-4" />
                     <h2 className="text-4xl font-bold text-gray-800 italic mb-8">Please Enter Your Information</h2>
                 </div>
 
-                {/* Form */}
-                <form ref={formRef} onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8">
+                <form 
+                    ref={formRef} 
+                    onSubmit={handleSubmit} 
+                    className="max-w-4xl mx-auto space-y-8"
+                >
                     {/* Name Section */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -215,11 +401,9 @@ export default function FoodieReservation() {
                         <Input 
                             name="email"
                             type="email"
-                            pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
                             placeholder="Example@gmail.com"
                             required
                             className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" 
-                            title="Please enter a valid email address (e.g., Example@gmail.com)"
                         />
                     </div>
 
@@ -229,11 +413,9 @@ export default function FoodieReservation() {
                         <Input 
                             name="phone"
                             type="tel"
-                            pattern="0\d{7,}"
                             placeholder="Enter your phone number (start with 0)"
                             required
                             className="h-12 bg-white/80 border-gray-300 max-w-2xl transition-transform duration-200 hover:scale-105" 
-                            title="Phone number must start with 0 and be at least 8 digits"
                         />
                     </div>
 
@@ -326,10 +508,10 @@ export default function FoodieReservation() {
                     <div className="text-center pt-8 transition-transform duration-200 hover:scale-105">
                         <Button 
                             type="submit"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || !user}
                             className="bg-orange-500 hover:bg-orange-600 text-white px-12 py-4 text-xl font-bold rounded-full disabled:opacity-50"
                         >
-                            {isSubmitting ? 'Creating Reservation...' : 'Reserve'}
+                            {isSubmitting ? 'Creating Reservation...' : !user ? 'Please Login First' : 'Reserve'}
                         </Button>
                     </div>
                 </form>
@@ -447,3 +629,5 @@ export default function FoodieReservation() {
         </div>
     )
 }
+
+
