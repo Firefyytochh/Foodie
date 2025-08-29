@@ -289,12 +289,12 @@ function LandingPageContent() {
       'burger': { name: 'Burger', icon: '/cheese_burger-removebg-preview.png' },
       'drink': { name: 'Drink', icon: '/CokeinCan-removebg-preview.png' },
       'ice-cream': { name: 'Ice Cream', icon: '/Strawberry-Ice-Cream-removebg-preview.png' },
-      'dessert': { name: 'Dessert', icon: '/plae ayy.jpg' }
+      'dessert': { name: 'Dessert', icon: '/plae-ayy.jpg' } // Changed from 'plae ayy.jpg'
     };
 
     return categoryMap[category] || { 
       name: category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' '), 
-      icon: '/plae ayy.jpg'
+      icon: '/plae-ayy.jpg' // Changed from 'plae ayy.jpg'
     };
   };
 

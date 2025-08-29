@@ -218,7 +218,7 @@ export default function FoodieWebsite() {
                     onClick={() => setActiveCategory("dessert")}
                   >
                     <div className="w-8 h-8 rounded-full overflow-hidden bg-white/20">
-                      <Image src="/plae ayy.jpg" alt="Dessert" width={32} height={32} className="w-full h-full object-cover" />
+                      <Image src="/plae-ayy.jpg" alt="Dessert" width={32} height={32} className="w-full h-full object-cover" />
                     </div>
                     <span>Dessert</span>
                   </div>
