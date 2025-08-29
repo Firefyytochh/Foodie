@@ -7,13 +7,16 @@ const supabase = createClient(
 );
 
 export async function getOrders() {
-  const { data, error } = await supabase.from("orders").select("*");
+  try {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id, items, total, status, customer_phone, customer_location, created_at") // Removed updated_at
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Error fetching orders:", error.message);
-    return { success: false, error: error.message };
+    return { success: true, data, error };
+  } catch (error: any) {
+    return { success: false, data: [], error: error.message || "Unknown error" };
   }
-  return { success: true, data };
 }
 
 export async function placeOrder(orderData: any) {
@@ -27,14 +30,35 @@ export async function placeOrder(orderData: any) {
 }
 
 export async function confirmOrder(orderId: string) {
-  const { data, error } = await supabase
-    .from('orders')
-    .update({ status: "confirmed", updated_at: new Date().toISOString() })
-    .eq('id', orderId)
-    .select()
-    .maybeSingle();
+  try {
+    console.log('Confirming order with ID:', orderId);
+    
+    if (!orderId || orderId.trim() === '') {
+      throw new Error('Invalid order ID provided');
+    }
 
-  return { success: !error, data, error: error?.message };
+    // Simple update without updated_at
+    const { error } = await supabase
+      .from('orders')
+      .update({ 
+        status: 'confirmed'
+      })
+      .eq('id', orderId);
+    if (error) {
+      console.error('Supabase update error:', error);
+      throw error;
+    }
+
+    console.log('Order status updated successfully');
+    return { success: true, data: { id: orderId, status: 'confirmed' } };
+    
+  } catch (error) {
+    console.error('Error confirming order:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to confirm order'
+    };
+  }
 }
 
 export async function deleteOrder(orderId: string) {

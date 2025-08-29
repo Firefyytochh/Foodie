@@ -2,8 +2,6 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-
-
 function getSupabaseAdmin() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('Missing Supabase environment variables');
@@ -105,7 +103,7 @@ export async function getPayments() {
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
       .from("payments")
-      .select("id, order_id, payment_method, payment_status, items, subtotal, shipping_cost, customer_phone, customer_location, card_last_four, card_type, cardholder_name, created_at, updated_at")
+      .select("id, order_id, payment_method, payment_status, items, subtotal, shipping_cost, customer_phone, customer_location, card_last_four, card_type, cardholder_name, created_at")
       .order("created_at", { ascending: false });
 
     return { data, error };
@@ -114,20 +112,59 @@ export async function getPayments() {
   }
 }
 
-export async function confirmPayment(id: string) {
+export async function confirmPayment(paymentId: string) {
   try {
+    console.log('Confirming payment with ID:', paymentId);
+    
+    // Validate payment ID
+    if (!paymentId || paymentId.trim() === '') {
+      throw new Error('Invalid payment ID provided');
+    }
+
     const supabaseAdmin = getSupabaseAdmin();
-    const { error } = await supabaseAdmin
-      .from("payments")
-      .update({ payment_status: "completed" })
-      .eq("id", id);
+    
+    // First check if the payment exists
+    const { data: existingPayment, error: fetchError } = await supabaseAdmin
+      .from('payments')
+      .select('id, payment_status')
+      .eq('id', paymentId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching payment:', fetchError);
+      throw new Error(`Payment not found: ${fetchError.message}`);
+    }
+
+    if (!existingPayment) {
+      throw new Error('Payment not found');
+    }
+
+    console.log('Existing payment:', existingPayment);
+
+    // Update the payment status - use 'completed' instead of 'confirmed'
+    const { data, error } = await supabaseAdmin
+      .from('payments')
+      .update({ 
+        payment_status: 'completed'  // Changed from 'confirmed' to 'completed'
+      })
+      .eq('id', paymentId)
+      .select()
+      .single();
 
     if (error) {
-      return { success: false, error: error.message };
+      console.error('Supabase update error:', error);
+      throw new Error(`Update failed: ${error.message}`);
     }
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Unknown error" };
+
+    console.log('Payment updated successfully:', data);
+    return { success: true, data: { id: paymentId, payment_status: 'completed' } };
+    
+  } catch (error) {
+    console.error('Error confirming payment:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to confirm payment'
+    };
   }
 }
 

@@ -10,9 +10,9 @@ import { getUseCartStore } from "../../store/cart"
 import { menuItems } from "../../lib/menuData";
 import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from 'next/navigation';
-import { addComment, getComments } from "../../action/comments"; // Fixed path
+import { addComment, getComments } from "../../action/comments";
 import { getCurrentUser, logoutUser } from "../../action/auth";
-import { getMenuItems } from "../../action/admin"; // Add this import
+import { getMenuItems } from "../../action/admin";
 
 interface Comment {
   id: string;
@@ -35,7 +35,6 @@ interface User {
   };
 }
 
-// Helper function for image path (make sure this matches your menu page logic)
 function getImageSrc(image?: string) {
   if (!image || image.trim() === "") {
     return "/default.jpg";
@@ -43,19 +42,16 @@ function getImageSrc(image?: string) {
   if (image.startsWith("http")) {
     return image;
   }
-  // Use /uploads/ for local images (same as menu page)
   return `/uploads/${image}`;
 }
 
 function LandingPageContent() {
   const useCartStore = getUseCartStore();
   const { addToCart, cartItemCount, items } = useCartStore();
-  // Ensure items is always an array
   const safeCart = Array.isArray(items) ? items : [];
-  // Set default category to the first available category or empty
   const [activeCategory, setActiveCategory] = useState<string>("");
-  // Track which button was just clicked
   const [justAdded, setJustAdded] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<any | null>(null); // New state for modal
   const formRef = useRef<HTMLFormElement>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -85,16 +81,11 @@ function LandingPageContent() {
     router.push('/login');
   };
 
-
   const fetchComments = async (loadMore: boolean = false) => {
     try {
       setCommentsLoading(true);
-      console.log('🔍 Starting to fetch comments...');
-
       const offset = loadMore ? commentsOffset : 0;
       const result = await getComments(10, offset);
-
-      console.log('🔍 Comments fetch result:', result);
 
       if (result.error) {
         console.error('Error fetching comments:', result.error);
@@ -106,8 +97,6 @@ function LandingPageContent() {
       }
 
       if (result.data) {
-        console.log('🔍 Setting comments:', result.data);
-
         if (loadMore) {
           setComments(prev => [...prev, ...result.data]);
           setCommentsOffset(prev => prev + 10);
@@ -116,12 +105,11 @@ function LandingPageContent() {
           setCommentsOffset(10);
         }
 
-        // Now these properties exist
         setHasMoreComments(result.hasMore);
         setTotalComments(result.total);
       }
     } catch (error) {
-      console.error('🔍 Failed to fetch comments:', error);
+      console.error('Failed to fetch comments:', error);
       if (!loadMore) {
         setComments([]);
         setHasMoreComments(false);
@@ -132,22 +120,13 @@ function LandingPageContent() {
     }
   };
 
-  // Add this function
   const loadMoreComments = () => {
     fetchComments(true);
   };
 
-  // Fix the useEffect that's causing the infinite loop
   useEffect(() => {
-    // Only fetch comments once when component mounts
     fetchComments();
-  }, []); // Empty dependency array - only run once on mount
-
-  // If you need to refetch when certain values change, create separate useEffects
-  useEffect(() => {
-    // Only refetch if you specifically need to when certain conditions change
-    // Be very careful about what dependencies you add here
-  }, [/* specific dependencies only */]);
+  }, []);
 
   useEffect(() => {
     const category = searchParams.get('category');
@@ -178,7 +157,6 @@ function LandingPageContent() {
       if (result.error) {
         alert('Failed to update comment: ' + result.error);
       } else {
-        // Update the comment in the local state
         setComments(prev => prev.map(comment => 
           comment.id === commentId 
             ? { ...comment, comment_text: editingText, updated_at: new Date().toISOString() }
@@ -218,7 +196,6 @@ function LandingPageContent() {
       if (result.error) {
         alert('Failed to delete comment: ' + result.error);
       } else {
-        // Remove the comment from local state
         setComments(prev => prev.filter(comment => comment.id !== commentId));
         setTotalComments(prev => prev - 1);
         alert('Comment deleted successfully!');
@@ -230,24 +207,19 @@ function LandingPageContent() {
     }
   };
 
-  // Add this function for Add to Cart button
   const handleAddToCartWithFeedback = (item: any) => {
-    console.log('Adding item to cart from category:', item);
-    
-    // Ensure the item has all required properties including proper image data
     const cartItem = {
       id: item.id,
       name: item.name,
       price: item.price,
-      image_url: item.image_url, // Make sure this is included
-      image: item.image || item.image_url, // Fallback
+      image_url: item.image_url,
+      image: item.image || item.image_url,
       quantity: 1,
       rating: item.rating,
       description: item.description,
       category: item.category
     };
     
-    console.log('Cart item being added:', cartItem);
     addToCart(cartItem);
     setJustAdded(item.id);
     
@@ -256,7 +228,6 @@ function LandingPageContent() {
     }, 2000);
   };
 
-  // Fetch menu items from database
   useEffect(() => {
     const fetchMenu = async () => {
       const result = await getMenuItems();
@@ -270,32 +241,28 @@ function LandingPageContent() {
     fetchMenu();
   }, []);
 
-  // Filter for best sell items (choose top 3 by rating or any logic you want)
   const bestSellItems = dbMenuItems
     .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
     .slice(0, 3);
 
-  // Get all unique categories from database
   const getAllCategories = () => {
     const categories = dbMenuItems
       .map(item => item.category)
       .filter(category => category && category.trim() !== '')
       .map(category => category.toLowerCase().trim());
     
-    return [...new Set(categories)].sort(); // Remove duplicates and sort
+    return [...new Set(categories)].sort();
   };
 
-  // Set default category when data loads
   useEffect(() => {
     if (dbMenuItems.length > 0 && !activeCategory) {
       const categories = getAllCategories();
       if (categories.length > 0) {
-        setActiveCategory(categories[0]); // Set to first available category
+        setActiveCategory(categories[0]);
       }
     }
   }, [dbMenuItems, activeCategory]);
 
-  // Fix the category filtering to handle ALL categories dynamically
   const getFilteredItems = () => {
     if (!activeCategory) return [];
     
@@ -311,26 +278,31 @@ function LandingPageContent() {
 
   const filteredItems = getFilteredItems();
 
-  // Fix category counting
   const getCategoryCount = (category: string) => {
     return dbMenuItems.filter(item => 
       item.category && item.category.toLowerCase().trim() === category.toLowerCase().trim()
     ).length;
   };
 
-  // Get category display info
   const getCategoryInfo = (category: string) => {
     const categoryMap: { [key: string]: { name: string; icon: string } } = {
       'burger': { name: 'Burger', icon: '/cheese_burger-removebg-preview.png' },
       'drink': { name: 'Drink', icon: '/CokeinCan-removebg-preview.png' },
       'ice-cream': { name: 'Ice Cream', icon: '/Strawberry-Ice-Cream-removebg-preview.png' },
-      'dessert': { name: 'Dessert', icon: '/default.jpg' }
+      'dessert': { name: 'Dessert', icon: '/plae ayy.jpg' }
     };
 
     return categoryMap[category] || { 
       name: category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' '), 
-      icon: '/default.jpg' 
+      icon: '/plae ayy.jpg'
     };
+  };
+
+  // Close modal when clicking outside
+  const handleModalClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      setSelectedItem(null);
+    }
   };
 
   return (
@@ -387,8 +359,8 @@ function LandingPageContent() {
           </div>
         </div>
       </header>
+      
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Hero Section */}
         <section className="px-6 py-12 md:py-20">
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
             <div>
@@ -414,7 +386,7 @@ function LandingPageContent() {
             </div>
             <div className="flex justify-center transition-transform duration-200 hover:scale-105">
               <Image
-                src="/burger1.jpg" // Place your burger image in the public folder
+                src="/burger1.jpg"
                 alt="Delicious burger"
                 width={400}
                 height={400}
@@ -424,7 +396,6 @@ function LandingPageContent() {
           </div>
         </section>
 
-        {/* Best Sell Section */}
         <section className="px-6 py-16">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-4xl font-bold text-center text-orange-900 mb-12">Best Sell</h2>
@@ -437,8 +408,8 @@ function LandingPageContent() {
             ) : (
               <div className="grid md:grid-cols-3 gap-8">
                 {bestSellItems.map(item => (
-                  <Card key={item.id} className="group bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-0 rounded-2xl">
-                    <div className="relative overflow-hidden rounded-t-2xl bg-gradient-to-br from-orange-50 to-orange-100">
+                  <Card key={item.id} className="group bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-0 rounded-2xl cursor-pointer">
+                    <div className="relative overflow-hidden rounded-t-2xl bg-gradient-to-br from-orange-50 to-orange-100" onClick={() => setSelectedItem(item)}>
                       <Image
                         src={getImageSrc(item.image_url || item.image)}
                         alt={item.name}
@@ -454,7 +425,7 @@ function LandingPageContent() {
                       </div>
                     </div>
                     <CardContent className="p-6 space-y-4">
-                      <h3 className="text-xl font-bold text-center text-gray-800 group-hover:text-orange-600 transition-colors duration-200">{item.name}</h3>
+                      <h3 className="text-xl font-bold text-center text-gray-800 group-hover:text-orange-600 transition-colors duration-200" onClick={() => setSelectedItem(item)}>{item.name}</h3>
                       <div className="flex items-center justify-between">
                         <span className="text-3xl font-bold text-orange-600">${item.price}</span>
                         <Button
@@ -463,13 +434,16 @@ function LandingPageContent() {
                               ? 'bg-green-500 text-white border-0 hover:bg-green-600'
                               : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0 hover:from-orange-600 hover:to-orange-700'
                           }`}
-                          onClick={() => handleAddToCartWithFeedback({ 
-                            id: item.id, 
-                            name: item.name, 
-                            price: item.price, 
-                            quantity: 1, 
-                            image: item.image_url || item.image 
-                          })}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddToCartWithFeedback({ 
+                              id: item.id, 
+                              name: item.name, 
+                              price: item.price, 
+                              quantity: 1, 
+                              image: item.image_url || item.image 
+                            });
+                          }}
                         >
                           {safeCart.some(cartItem => cartItem.id === item.id) || justAdded === item.id ? "Added ✓" : "Add to Cart"}
                         </Button>
@@ -482,18 +456,15 @@ function LandingPageContent() {
           </div>
         </section>
 
-        {/* Explore Our Menu Section */}
         <section className="px-6 py-16">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-4xl font-bold text-center text-orange-900 mb-12">Explore Our Menu</h2>
             <div className="grid md:grid-cols-4 gap-8">
-              {/* Sidebar Menu */}
               <aside className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6">
                 <h4 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800">
                   <Menu className="w-5 h-5 text-orange-500" /> Menu
                 </h4>
                 <div className="space-y-3">
-                  {/* Show all categories dynamically from database */}
                   {getAllCategories().map(category => {
                     const categoryInfo = getCategoryInfo(category);
                     
@@ -529,7 +500,6 @@ function LandingPageContent() {
                 </div>
               </aside>
 
-              {/* Menu Items Grid */}
               <div className="md:col-span-3">
                 {loadingMenu ? (
                   <div className="text-center py-8">Loading menu...</div>
@@ -569,8 +539,8 @@ function LandingPageContent() {
                         .map((item, index) => {
                           const isInCart = safeCart.some(cartItem => cartItem.id === item.id) || justAdded === item.id;
                           return (
-                            <Card key={item.id} className="group bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-0 rounded-xl">
-                              <div className="relative overflow-hidden bg-gradient-to-br from-orange-50 to-orange-100">
+                            <Card key={item.id} className="group bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-0 rounded-xl cursor-pointer">
+                              <div className="relative overflow-hidden bg-gradient-to-br from-orange-50 to-orange-100" onClick={() => setSelectedItem(item)}>
                                 <Image
                                   src={getImageSrc(item.image_url || item.image)}
                                   alt={item.name}
@@ -586,7 +556,7 @@ function LandingPageContent() {
                                 </div>
                               </div>
                               <CardContent className="p-4 space-y-3">
-                                <h4 className="font-bold text-center text-gray-800 group-hover:text-orange-600 transition-colors duration-200">{item.name}</h4>
+                                <h4 className="font-bold text-center text-gray-800 group-hover:text-orange-600 transition-colors duration-200" onClick={() => setSelectedItem(item)}>{item.name}</h4>
                                 <div className="flex items-center justify-between">
                                   <span className="text-lg font-bold text-orange-600">${item.price}</span>
                                   <Badge
@@ -598,7 +568,6 @@ function LandingPageContent() {
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      console.log('Badge clicked for item:', item); // Debug log
                                       handleAddToCartWithFeedback(item);
                                     }}
                                   >
@@ -617,7 +586,88 @@ function LandingPageContent() {
           </div>
         </section>
 
-        {/* About Us Section */}
+        {/* Description Modal */}
+        {selectedItem && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            onClick={handleModalClick}
+          >
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              {/* Modal Header */}
+              <div className="relative">
+                <Image
+                  src={getImageSrc(selectedItem.image_url || selectedItem.image)}
+                  alt={selectedItem.name}
+                  width={600}
+                  height={300}
+                  className="w-full h-64 object-cover rounded-t-2xl"
+                />
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-2 hover:bg-white transition-colors shadow-lg"
+                >
+                  <X className="w-5 h-5 text-gray-600" />
+                </button>
+                <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 shadow-lg">
+                  <div className="flex items-center gap-1">
+                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    <span className="text-sm font-semibold text-gray-700">{selectedItem.rating}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-4">
+                <div className="text-center">
+                  <h2 className="text-3xl font-bold text-gray-800 mb-2">{selectedItem.name}</h2>
+                  <span className="text-4xl font-bold text-orange-600">${selectedItem.price}</span>
+                </div>
+
+                {/* Category Badge */}
+                {selectedItem.category && (
+                  <div className="flex justify-center">
+                    <Badge className="bg-orange-100 text-orange-800 px-3 py-1 text-sm">
+                      {selectedItem.category.charAt(0).toUpperCase() + selectedItem.category.slice(1)}
+                    </Badge>
+                  </div>
+                )}
+
+                {/* Description */}
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h3 className="font-semibold text-gray-800 mb-2">Description</h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    {selectedItem.description || "This delicious item is carefully prepared with the finest ingredients to give you an amazing taste experience."}
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    onClick={() => setSelectedItem(null)}
+                    variant="outline"
+                    className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      handleAddToCartWithFeedback(selectedItem);
+                      setSelectedItem(null);
+                    }}
+                    className={`flex-1 font-semibold ${
+                      safeCart.some(cartItem => cartItem.id === selectedItem.id) || justAdded === selectedItem.id
+                        ? 'bg-green-500 hover:bg-green-600'
+                        : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700'
+                    }`}
+                  >
+                    {safeCart.some(cartItem => cartItem.id === selectedItem.id) || justAdded === selectedItem.id ? "Added to Cart ✓" : "Add to Cart"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <section className="px-6 py-16 bg-gradient-to-r from-orange-100 to-orange-50">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-4xl font-bold text-orange-900 mb-8">About Us</h2>
@@ -634,8 +684,6 @@ function LandingPageContent() {
             </Link>
           </div>
         </section>
-
-        
 
         <section className="px-6 py-16">
           <div className="max-w-7xl mx-auto">
@@ -663,27 +711,18 @@ function LandingPageContent() {
                 </h2>
                 <blockquote className="text-lg text-orange-800 mb-6 leading-relaxed">
                   &quot;The best chef is the one who can turn a simple burger into a masterpiece — balancing juicy flavors,
-                  fresh ingredients, and perfect seasoning in every bite. A true burger chef doesn’t just cook food,
+                  fresh ingredients, and perfect seasoning in every bite. A true burger chef doesn't just cook food,
                   they create happiness stacked between buns.&quot;
                 </blockquote>
-                <div className="flex items-center gap-4 mb-4">
-                 
-                  <div>
-                    
-                   
-                  </div>
-                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Comments Section */}
         <section className="px-6 py-16 bg-gradient-to-r from-orange-100 to-orange-50">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-4xl font-bold text-orange-900 mb-8 text-center">Leave a Comment</h2>
 
-            {/* Comment Form - Only show if user is logged in */}
             {user ? (
               <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
                 <div className="flex items-center gap-4 mb-4">
@@ -704,7 +743,7 @@ function LandingPageContent() {
                     <p className="font-semibold text-gray-900">
                       {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous'}
                     </p>
-                                        <p className="text-sm text-gray-500">What&apos;s on your mind?</p>
+                    <p className="text-sm text-gray-500">What&apos;s on your mind?</p>
                   </div>
                 </div>
 
@@ -729,7 +768,6 @@ function LandingPageContent() {
                       alert(`Error: ${result.error}`);
                     } else {
                       formRef.current?.reset();
-                      // Reset pagination and fetch fresh comments
                       setCommentsOffset(0);
                       await fetchComments(false);
                       alert('Comment posted successfully!');
@@ -767,7 +805,6 @@ function LandingPageContent() {
               </div>
             )}
 
-            {/* Comments Display */}
             <div className="mt-12">
               <h3 className="text-2xl font-bold text-orange-900 mb-6">
                 Comments ({totalComments})
@@ -800,8 +837,7 @@ function LandingPageContent() {
                               />
                             ) : (
                               <div className="w-full h-full bg-orange-300 flex items-center justify-center text-white font-bold">
-                                {(comment.profiles?.username || 'U').charAt(0).toUpperCase()
-                                }
+                                {(comment.profiles?.username || 'U').charAt(0).toUpperCase()}
                               </div>
                             )}
                           </div>
@@ -824,7 +860,6 @@ function LandingPageContent() {
                           </div>
                         </div>
                         
-                        {/* Edit/Delete buttons - only show for comment owner */}
                         {user && user.id === comment.user_id && (
                           <div className="flex items-center space-x-2">
                             {editingCommentId === comment.id ? (
@@ -883,7 +918,6 @@ function LandingPageContent() {
                     </div>
                   ))}
 
-                  {/* Load More Button */}
                   {hasMoreComments && (
                     <div className="text-center mt-8">
                       <Button
@@ -910,7 +944,6 @@ function LandingPageContent() {
           </div>
         </section>
 
-        {/* Footer */}
         <footer id="footer" className="bg-orange-800 text-white px-6 py-12">
           <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8">
             <div>
@@ -933,15 +966,11 @@ function LandingPageContent() {
               <h4 className="font-bold mb-4">Useful links</h4>
               <div className="space-y-2 text-orange-200 underline">
                 <Link href="/Aboutus">About us</Link>
-
               </div>
               <div className="space-y-2 text-orange-200  underline">
-
                 <Link href="/menu">Menu</Link>
-
               </div>
               <div className="space-y-2 text-orange-200  underline">
-
                 <Link href="/Cart">Cart</Link>
               </div>
             </div>
@@ -950,27 +979,17 @@ function LandingPageContent() {
               <h4 className="font-bold mb-4">Main Menu</h4>
               <div className="space-y-2 text-orange-200  underline">
                 <Link href="/landingpage?category=burger ">Burger</Link>
-
-
               </div>
               <div className="space-y-2 text-orange-200  underline">
-
                 <Link href="/landingpage?category=drink">Drink</Link>
-
               </div>
               <div className="space-y-2 text-orange-200  underline">
-
                 <Link href="/landingpage?category=ice-cream">Ice Cream</Link>
-
               </div>
               <div className="space-y-2 text-orange-200  underline">
-
                 <Link href="/landingpage?category=dessert">Dessert</Link>
-
               </div>
             </div>
-
-
 
             <div>
               <h4 className="font-bold mb-4">Contact Us</h4>

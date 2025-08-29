@@ -116,7 +116,7 @@ export default function AboutManagement() {
                   <Input
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    placeholder="About Us"
+                    placeholder="Enter your heading here"
                     required
                   />
                 </div>
@@ -128,7 +128,7 @@ export default function AboutManagement() {
                   <Input
                     value={formData.subtitle}
                     onChange={(e) => setFormData({...formData, subtitle: e.target.value})}
-                    placeholder="Bite Into Happiness – Fresh, Juicy, Unforgettable."
+                    placeholder="Describe your shop here"
                   />
                 </div>
 

@@ -17,7 +17,6 @@ type Payment = {
   card_type?: string;
   cardholder_name?: string;
   created_at?: string;
-  updated_at?: string;
 };
 
 export default function AdminPaymentsPage() {
@@ -149,26 +148,25 @@ export default function AdminPaymentsPage() {
               <th className="py-3 px-4 text-left">Card Type</th>
               <th className="py-3 px-4 text-left">Card Holder</th>
               <th className="py-3 px-4 text-left">Created At</th>
-              <th className="py-3 px-4 text-left">Updated At</th>
               <th className="py-3 px-4 text-left">Action</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={15} className="py-6 text-center text-gray-500">
+                <td colSpan={14} className="py-6 text-center text-gray-500">
                   Loading payments...
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={15} className="py-6 text-center text-red-500">
+                <td colSpan={14} className="py-6 text-center text-red-500">
                   Error: {error}
                 </td>
               </tr>
             ) : payments.length === 0 ? (
               <tr>
-                <td colSpan={15} className="py-6 text-center text-gray-500">
+                <td colSpan={14} className="py-6 text-center text-gray-500">
                   No payments found.
                 </td>
               </tr>
@@ -179,20 +177,25 @@ export default function AdminPaymentsPage() {
                   <td className="py-2 px-4 font-mono text-xs">{payment.order_id}</td>
                   <td className="py-2 px-4">{payment.payment_method}</td>
                   <td className="py-2 px-4">
-                    <span className={`px-2 py-1 rounded ${payment.payment_status === "confirmed" ? "bg-green-100 text-green-700" : payment.payment_status === "declined" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
+                    <span className={`px-2 py-1 rounded ${
+                      payment.payment_status === "completed" || payment.payment_status === "confirmed"
+                        ? "bg-green-100 text-green-700" 
+                        : payment.payment_status === "declined" 
+                          ? "bg-red-100 text-red-700" 
+                          : "bg-yellow-100 text-yellow-700"
+                    }`}>
                       {payment.payment_status}
                     </span>
                   </td>
                   <td className="py-2 px-4">{JSON.stringify(payment.items)}</td>
-                  <td className="py-2 px-4">{payment.subtotal}</td>
-                  <td className="py-2 px-4">{payment.shipping_cost}</td>
+                  <td className="py-2 px-4">${payment.subtotal}</td>
+                  <td className="py-2 px-4">${payment.shipping_cost}</td>
                   <td className="py-2 px-4">{payment.customer_phone}</td>
                   <td className="py-2 px-4">{payment.customer_location}</td>
                   <td className="py-2 px-4">{payment.card_last_four ?? "-"}</td>
                   <td className="py-2 px-4">{payment.card_type ?? "-"}</td>
                   <td className="py-2 px-4">{payment.cardholder_name ?? "-"}</td>
                   <td className="py-2 px-4 text-xs">{payment.created_at ? new Date(payment.created_at).toLocaleString() : "-"}</td>
-                  <td className="py-2 px-4 text-xs">{payment.updated_at ? new Date(payment.updated_at).toLocaleString() : "-"}</td>
                   <td className="py-2 px-4 flex gap-2">
                     {payment.payment_status === "pending" && (
                       <button

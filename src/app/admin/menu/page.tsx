@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Image from 'next/image';
 import { isAdmin } from '@/utils/admin';
 import { addMenuItem, getMenuItems, deleteMenuItem } from '@/action/admin';
+import { Menu } from 'lucide-react';
 
 interface MenuItem {
   id: string;
@@ -29,6 +30,20 @@ const CATEGORIES = [
   { value: 'dessert', label: 'Dessert' },
 ];
 
+const getCategoryInfo = (category: string) => {
+  const categoryMap: { [key: string]: { name: string; icon: string } } = {
+    'burger': { name: 'Burger', icon: '/cheese_burger-removebg-preview.png' },
+    'drink': { name: 'Drink', icon: '/CokeinCan-removebg-preview.png' },
+    'ice-cream': { name: 'Ice Cream', icon: '/Strawberry-Ice-Cream-removebg-preview.png' },
+    'dessert': { name: 'Dessert', icon: '/plae ayy.jpg' }
+  };
+
+  return categoryMap[category] || { 
+    name: category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' '), 
+    icon: '/plae ayy.jpg'
+  };
+};
+
 export default function MenuManagement() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -36,6 +51,7 @@ export default function MenuManagement() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -61,15 +77,42 @@ export default function MenuManagement() {
     const result = await getMenuItems();
     if (result.success) {
       setMenuItems(result.data);
+      // Set first predefined category as active if none selected
+      if (!activeCategory) {
+        setActiveCategory(CATEGORIES[0].value); // Set to 'burger' by default
+      }
     }
     setLoading(false);
+  };
+
+  // Get all predefined categories (show all categories even if empty)
+  const getAllCategories = () => {
+    return CATEGORIES.map(cat => cat.value);
+  };
+
+  const getCategoryCount = (category: string) => {
+    return menuItems.filter(item => 
+      item.category && item.category.toLowerCase().trim() === category.toLowerCase().trim()
+    ).length;
+  };
+
+  const getFilteredItems = () => {
+    if (!activeCategory) return [];
+    
+    return menuItems.filter(item => {
+      if (!item.category) return false;
+      
+      const itemCategory = item.category.toLowerCase().trim();
+      const selectedCategory = activeCategory.toLowerCase().trim();
+      
+      return itemCategory === selectedCategory;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
 
-    // Add validation to ensure category is selected
     if (!formData.category) {
       alert('Please select a category');
       setSubmitting(false);
@@ -83,7 +126,6 @@ export default function MenuManagement() {
     submitData.append('description', formData.description);
     submitData.append('category', formData.category);
     
-    // Debug: Log the category being sent
     console.log('Submitting category:', formData.category);
     
     if (formData.image) {
@@ -111,7 +153,6 @@ export default function MenuManagement() {
     setSubmitting(false);
   };
 
-  // Also add a debug function to check form state
   const handleCategoryChange = (value: string) => {
     console.log('Category selected:', value);
     setFormData({...formData, category: value});
@@ -130,6 +171,8 @@ export default function MenuManagement() {
 
   if (!mounted) return <div>Loading...</div>;
   if (!isAdmin()) return null;
+
+  const filteredItems = getFilteredItems();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -194,7 +237,6 @@ export default function MenuManagement() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {/* Debug display */}
                   {formData.category && (
                     <p className="text-xs text-gray-500 mt-1">Selected: {formData.category}</p>
                   )}
@@ -260,10 +302,127 @@ export default function MenuManagement() {
           </div>
         )}
 
-        {/* Menu Items List */}
+        {/* Category Grid Menu - From Landing Page */}
+        <div className="bg-white rounded-lg shadow-md mb-8">
+          <div className="p-6 border-b">
+            <h2 className="text-xl font-semibold">Browse Menu by Category</h2>
+          </div>
+          
+          {loading ? (
+            <div className="p-8 text-center">Loading menu items...</div>
+          ) : (
+            <div className="p-6">
+              <div className="grid md:grid-cols-4 gap-8">
+                {/* Categories Sidebar - Show ALL categories */}
+                <aside className="bg-gray-50 rounded-xl p-6">
+                  <h4 className="text-lg font-bold mb-6 flex items-center gap-2 text-gray-800">
+                    <Menu className="w-5 h-5 text-orange-500" /> Categories
+                  </h4>
+                  <div className="space-y-3">
+                    {getAllCategories().map(category => {
+                      const categoryInfo = getCategoryInfo(category);
+                      
+                      return (
+                        <div
+                          key={category}
+                          className={`px-4 py-3 rounded-xl font-medium flex items-center gap-3 cursor-pointer transition-all duration-200 ${
+                            activeCategory === category 
+                              ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg" 
+                              : "text-orange-800 hover:bg-orange-50 hover:shadow-md"
+                          }`}
+                          onClick={() => setActiveCategory(category)}
+                        >
+                          <div className="w-8 h-8 rounded-full overflow-hidden bg-white/20">
+                            <Image 
+                              src={categoryInfo.icon} 
+                              alt={categoryInfo.name} 
+                              width={32} 
+                              height={32} 
+                              className="w-full h-full object-cover" 
+                            />
+                          </div>
+                          <span>{categoryInfo.name} ({getCategoryCount(category)})</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </aside>
+
+                {/* Items Grid */}
+                <div className="md:col-span-3">
+                  {!activeCategory ? (
+                    <div className="flex flex-col items-center justify-center h-64 w-full bg-gradient-to-br from-orange-100 to-orange-200 rounded-2xl">
+                      <span className="text-2xl text-orange-600 font-bold mb-2">
+                        Select a category to view items
+                      </span>
+                    </div>
+                  ) : filteredItems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-64 w-full bg-gradient-to-br from-orange-100 to-orange-200 rounded-2xl">
+                      <span className="text-2xl text-orange-600 font-bold mb-2">
+                        No {getCategoryInfo(activeCategory).name} items available
+                      </span>
+                      <span className="text-lg text-orange-500">
+                        Add some {getCategoryInfo(activeCategory).name.toLowerCase()} items to get started!
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-6">
+                        <h3 className="text-2xl font-bold text-gray-800">
+                          {getCategoryInfo(activeCategory).name} ({filteredItems.length} items)
+                        </h3>
+                        <p className="text-gray-600 mt-1">
+                          Manage your {getCategoryInfo(activeCategory).name.toLowerCase()} menu items
+                        </p>
+                      </div>
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredItems.map((item) => (
+                          <div key={item.id} className="bg-white border rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                            <div className="relative h-48 bg-gray-100">
+                              {item.image_url ? (
+                                <Image
+                                  src={item.image_url}
+                                  alt={item.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                  <span>No Image</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-4">
+                              <h4 className="font-semibold text-lg mb-2">{item.name}</h4>
+                              <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
+                              <div className="flex justify-between items-center mb-3">
+                                <span className="text-lg font-bold text-orange-600">${item.price}</span>
+                                <span className="text-sm text-gray-500">Rating: {item.rating}/5</span>
+                              </div>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDelete(item.id, item.name)}
+                                className="w-full"
+                              >
+                                Delete Item
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* All Menu Items List */}
         <div className="bg-white rounded-lg shadow-md">
           <div className="p-6 border-b">
-            <h2 className="text-xl font-semibold">Current Menu Items</h2>
+            <h2 className="text-xl font-semibold">All Menu Items</h2>
           </div>
           
           {loading ? (

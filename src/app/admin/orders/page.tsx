@@ -10,7 +10,6 @@ type Order = {
   customer_phone?: string;
   customer_location?: string;
   created_at?: string;
-  updated_at?: string;
 };
 
 export default function AdminOrdersPage() {
@@ -188,20 +187,19 @@ export default function AdminOrdersPage() {
               <th className="py-3 px-4 text-left">Customer Phone</th>
               <th className="py-3 px-4 text-left">Customer Location</th>
               <th className="py-3 px-4 text-left">Created At</th>
-              <th className="py-3 px-4 text-left">Updated At</th>
               <th className="py-3 px-4 text-left">Action</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="py-6 text-center text-gray-500">
+                <td colSpan={8} className="py-6 text-center text-gray-500">
                   Loading orders...
                 </td>
               </tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={9} className="py-6 text-center text-gray-500">
+                <td colSpan={8} className="py-6 text-center text-gray-500">
                   No orders found.
                 </td>
               </tr>
@@ -221,11 +219,6 @@ export default function AdminOrdersPage() {
                   <td className="py-2 px-4 text-xs">
                     {order.created_at
                       ? new Date(order.created_at).toLocaleString()
-                      : "N/A"}
-                  </td>
-                  <td className="py-2 px-4 text-xs">
-                    {order.updated_at
-                      ? new Date(order.updated_at).toLocaleString()
                       : "N/A"}
                   </td>
                   <td className="py-2 px-4 flex gap-2">
