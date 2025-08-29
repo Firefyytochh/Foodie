@@ -1,9 +1,88 @@
 "use client";
 
-import { createClient } from "../../utils/supabase/client";
+import { createClient } from "../utils/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-// Forgot password
+// Send OTP for password reset using resetPasswordForEmail
+export async function sendPasswordResetOTP(email: string) {
+  const supabase = createClient();
+  
+  try {
+    // This will now send the OTP template instead of magic link
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+
+    if (error) {
+      console.error('Send reset OTP error:', error);
+      return { error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Send reset OTP error:', error);
+    return { error: "Failed to send verification code." };
+  }
+}
+
+// Verify the recovery OTP code
+export async function verifyPasswordResetOTP(email: string, token: string) {
+  const supabase = createClient();
+  
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: email,
+      token: token,
+      type: 'recovery' // Use recovery type for password reset OTP
+    });
+
+    if (error) {
+      console.error('Verify recovery OTP error:', error);
+      return { error: "Invalid or expired verification code." };
+    }
+
+    if (data.session) {
+      return { success: true, session: data.session };
+    }
+
+    return { error: "Verification failed." };
+  } catch (error) {
+    console.error('Verify recovery OTP error:', error);
+    return { error: "Failed to verify code." };
+  }
+}
+
+// Update password after OTP verification
+export async function updatePasswordAfterVerification(newPassword: string) {
+  const supabase = createClient();
+  
+  try {
+    // Check if user is authenticated
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      return { error: "Session expired. Please verify your code again." };
+    }
+
+    // Update the password
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) {
+      console.error('Update password error:', error);
+      return { error: error.message };
+    }
+
+    // Sign out after password update for security
+    await supabase.auth.signOut();
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Update password error:', error);
+    return { error: "Failed to update password." };
+  }
+}
+
+// Keep all your existing functions unchanged...
 export async function forgotPassword(email: string): Promise<{
   error?: string;
   success?: boolean;
@@ -33,21 +112,6 @@ export async function forgotPassword(email: string): Promise<{
     }
     return { error: "An unexpected error occurred." };
   }
-}
-
-// Request password reset
-export async function requestPasswordReset(email: string) {
-  const supabase = createClient();
-  
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: 'http://localhost:3000/resetpw',
-  });
-  
-  if (error) {
-    return { error: error.message };
-  }
-  
-  return { success: true };
 }
 
 // Login function
