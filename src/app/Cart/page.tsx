@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 import { getUseCartStore } from "../../store/cart"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/utils/supabase/client"
+import {Footer} from "../component/footer" 
 
 export default function CartPage() {
   const useCartStore = getUseCartStore();
@@ -310,6 +311,7 @@ export default function CartPage() {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

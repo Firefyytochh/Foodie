@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { UUID } from "crypto";
 
 function getSupabaseAdmin() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -12,6 +13,49 @@ function getSupabaseAdmin() {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 }
+
+
+export async function deleteComment(commentId: UUID, userId?: UUID | string | null) {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+
+    // Normalize userId: only keep real UUIDs, otherwise force to null
+    if (!userId || userId === "null" || userId === "undefined") {
+      userId = null;
+    }
+
+    if (!commentId) {
+      throw new Error("Invalid commentId");
+    }
+
+    console.log("deleteComment called with:", { commentId, userId });
+
+    let query = supabaseAdmin.from("comments").delete().eq("id", commentId);
+
+    // Only filter by user_id if it's a real UUID
+    if (userId) {
+      query = query.eq("user_id", userId);
+    }
+
+    const { error } = await query;
+
+    if (error) {
+      console.error("Supabase delete error:", error);
+      throw new Error("Failed to delete comment");
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    return {
+      error: {
+        message:
+          error instanceof Error ? error.message : "An unknown error occurred",
+      },
+    };
+  }
+}
+
 
 export async function addComment(comment: string, userId: string) {
   try {
@@ -121,3 +165,4 @@ export async function getComments(limit: number = 10, offset: number = 0) {
     };
   }
 }
+

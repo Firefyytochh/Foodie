@@ -252,6 +252,21 @@ export default function AdminDashboard() {
               </div>
             </div>
           </Link>
+          <Link href="/admin/handlecomments">
+            <div className="bg-white rounded-xl shadow-md p-7 hover:shadow-xl transition-shadow cursor-pointer group relative">
+              <div className="flex items-center">
+                <div className="p-4 bg-green-100 rounded-xl group-hover:bg-green-200 transition relative">
+                  <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 14v2a4 4 0 01-8 0v-2m8-4V6a4 4 0 00-8 0v4m8 0H8" />
+                  </svg>
+                </div>
+                <div className="ml-5">
+                  <h3 className="text-xl font-semibold text-gray-900">Comment Management</h3>
+                  <p className="text-gray-600">View and manage User comments</p>
+                </div>
+              </div>
+            </div>
+          </Link>
         </div>
 
         {/* Welcome Message */}
