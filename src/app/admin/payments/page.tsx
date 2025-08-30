@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { getPayments, confirmPayment, deletePayment, deleteAllPayments } from "@/action/payment";
 import { createClient } from "@supabase/supabase-js";
-
+import {Button} from "@/components/ui/button";
 type Payment = {
   id: string;
   order_id: string;
@@ -18,8 +19,8 @@ type Payment = {
   cardholder_name?: string;
   created_at?: string;
 };
-
 export default function AdminPaymentsPage() {
+  const router = useRouter();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
@@ -113,24 +114,38 @@ export default function AdminPaymentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-center text-gray-800 flex items-center justify-center gap-2">
-        Payments
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 px-4 py-8">
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/admin/dashboard')}
+              >
+                ← Back to Dashboard
+              </Button>
+              <h1 className="text-2xl font-bold text-gray-900 text-center item-center">Menu Management</h1>
+            </div>
+            
         {pendingCount > 0 && (
           <span className="inline-block bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
             {pendingCount}
           </span>
         )}
-      </h1>
-      <div className="text-center mb-4">
-        <button
+          <div className="text-center mb-4">
+        <Button
           onClick={handleDeleteAll}
           className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition disabled:bg-red-400"
           disabled={payments.length === 0}
         >
           Delete All Payments
-        </button>
+        </Button>
       </div>
+      </div>
+      </div>
+      
+      </header>
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white rounded-lg shadow border border-gray-200">
           <thead>
@@ -138,6 +153,16 @@ export default function AdminPaymentsPage() {
               <th className="py-3 px-4 text-left">Payment ID</th>
               <th className="py-3 px-4 text-left">Order ID</th>
               <th className="py-3 px-4 text-left">Method</th>
+              <th className="py-3 px-4 text-left">Status</th>
+              <th className="py-3 px-4 text-left">Items</th>
+              <th className="py-3 px-4 text-left">Subtotal</th>
+              <th className="py-3 px-4 text-left">Shipping</th>
+              <th className="py-3 px-4 text-left">Phone</th>
+              <th className="py-3 px-4 text-left">Location</th>
+              <th className="py-3 px-4 text-left">Card Last 4</th>
+              <th className="py-3 px-4 text-left">Card Type</th>
+              <th className="py-3 px-4 text-left">Card Holder</th>
+              <th className="py-3 px-4 text-left">Created At</th>
               <th className="py-3 px-4 text-left">Status</th>
               <th className="py-3 px-4 text-left">Items</th>
               <th className="py-3 px-4 text-left">Subtotal</th>

@@ -2,6 +2,8 @@
 import { useEffect, useState, useRef } from "react";
 import { getReservations, confirmReservation, declineReservation, deleteReservation, deleteAllReservations } from "@/action/reservation";
 import { createClient } from "@supabase/supabase-js";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 type Reservation = {
   id: string;
@@ -16,8 +18,8 @@ type Reservation = {
   special_notes?: string;
   status: string;
 };
-
 export default function AdminReservationsPage() {
+  const router = useRouter();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
@@ -140,30 +142,45 @@ export default function AdminReservationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-center text-gray-800 flex items-center justify-center gap-2">
-        Reservations
+              
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 px-4 py-8">
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/admin/dashboard')}
+              >
+                ← Back to Dashboard
+              </Button>
+              <h1 className="text-2xl font-bold text-gray-900 text-center item-center">Menu Management</h1>
+            </div>
+            
         {pendingCount > 0 && (
           <span className="inline-block bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
             {pendingCount}
           </span>
         )}
-      </h1>
-      <div className="text-center mb-4">
+        <div className="text-center mb-4">
         <button
           onClick={handleDeleteAll}
-          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition disabled:bg-red-400"
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition disabled:bg-red-400 item-center"
           disabled={reservations.length === 0}
         >
           Delete All Reservations
         </button>
       </div>
+      </div>
+      </div>
+      
+      </header>
+      
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white rounded-lg shadow border border-gray-200">
           <thead>
             <tr className="bg-gray-100 text-gray-700">
               <th className="py-3 px-4 text-left">Reservation ID</th>
-              <th className="py-3 px-4 text-left">User ID</th>
               <th className="py-3 px-4 text-left">Name</th>
               <th className="py-3 px-4 text-left">Email</th>
               <th className="py-3 px-4 text-left">Phone</th>
@@ -192,7 +209,6 @@ export default function AdminReservationsPage() {
               reservations.map(reservation => (
                 <tr key={reservation.id} className="border-t border-gray-100 hover:bg-gray-50">
                   <td className="py-2 px-4 font-mono text-xs">{reservation.id}</td>
-                  <td className="py-2 px-4 font-mono text-xs">{reservation.user_id}</td>
                   <td className="py-2 px-4">{reservation.first_name} {reservation.last_name}</td>
                   <td className="py-2 px-4">{reservation.email}</td>
                   <td className="py-2 px-4">{reservation.phone}</td>
@@ -245,6 +261,7 @@ export default function AdminReservationsPage() {
           </span>
         </div>
       )}
+
     </div>
   );
 }

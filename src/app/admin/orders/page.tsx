@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { getOrders, confirmOrder, deleteOrder, deleteAllOrders } from "@/action/order";
+import { Button } from "@/components/ui/button";
 
 type Order = {
   id: string;
@@ -11,8 +13,8 @@ type Order = {
   customer_location?: string;
   created_at?: string;
 };
-
 export default function AdminOrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [popupOrder, setPopupOrder] = useState<Order | null>(null);
@@ -122,17 +124,26 @@ export default function AdminOrdersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-center text-gray-800 flex items-center justify-center gap-2">
-        Orders
+     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 px-4 py-8">
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/admin/dashboard')}
+              >
+                ← Back to Dashboard
+              </Button>
+              <h1 className="text-2xl font-bold text-gray-900 text-center item-center">Menu Management</h1>
+            </div>
+            
         {pendingCount > 0 && (
           <span className="inline-block bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
             {pendingCount}
           </span>
         )}
-      </h1>
-
-      <div className="text-center mb-4">
+        <div className="text-center mb-4">
         <button
           onClick={handleDeleteAll}
           className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition disabled:bg-red-400"
@@ -141,8 +152,10 @@ export default function AdminOrdersPage() {
           Delete All Orders
         </button>
       </div>
-
-      {/* Popup Notification */}
+      </div>
+      </div>
+      
+      </header>
       {popupOrder && (
         <div className="fixed top-6 left-1/2 z-50 transform -translate-x-1/2 bg-white shadow-lg rounded-lg border border-green-400 px-6 py-4 flex flex-col items-center animate-fade-in transition-all">
           <div className="flex justify-between w-full items-center mb-2">
