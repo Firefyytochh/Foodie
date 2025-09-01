@@ -14,7 +14,7 @@ import { getCurrentUser, logoutUser } from "../../action/auth";
 import { getMenuItems } from "../../action/admin";
 import { createClient } from "../../utils/supabase/client";
 import { Footer } from "../component/footer";
-
+import Navbar from "../component/navbar";
 interface Comment {
   id: string;
   comment_text: string;
@@ -367,67 +367,7 @@ function LandingPageContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-300 via-orange-200 to-yellow-100">
-      <header className="sticky top-0 z-50 bg-gradient-to-r from-orange-400 to-orange-300 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center">
-              <Image
-                src="/logo.png"
-                alt="Foodie Logo"
-                width={500}
-                height={500}
-                className="rounded-full"
-              />
-            </div>
-          </div>
-
-          <nav className="hidden md:flex space-x-8">
-            <Link href="/landingpage" className="text-white hover:text-orange-100 transition-colors">Home</Link>
-            <Link href="/Aboutus" className="text-white hover:text-orange-100 transition-colors">About Us</Link>
-            <Link href="/menu" className="text-white hover:text-orange-100 transition-colors">Menu</Link>
-            <Link href="#footer" className="text-white hover:text-orange-100 transition-colors">Contact</Link>
-          </nav>
-
-          <div className="flex items-center space-x-4">
-            {user ? (
-              <>
-                <Link href="/Cart" className="relative">
-                  <ShoppingCart className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
-                  {cartItemCount > 0 && (
-                    <Badge className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs">
-                      {cartItemCount}
-                    </Badge>
-                  )}
-                </Link>
-                <div className="flex items-center space-x-2">
-                  <span className="text-white text-sm hidden md:block">
-                    {user.email}
-                  </span>
-                  <Link href="/Profile">
-                    <User className="w-6 h-6 text-white cursor-pointer hover:text-orange-100" />
-                  </Link>
-                </div>
-                <Button onClick={handleLogout} variant="outline" className="text-orange-500 border-white hover:bg-white">
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link href="/login">
-                  <Button variant="outline" className="text-orange-500 border-white hover:bg-white">
-                    Login
-                  </Button>
-                </Link>
-                <Link href="/Signup">
-                  <Button variant="outline" className="text-orange-500 border-white hover:bg-white">
-                    Sign Up
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+         <Navbar />
       
       <main className="max-w-7xl mx-auto px-6 py-8">
         <section className="px-6 py-12 md:py-20">
