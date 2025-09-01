@@ -125,7 +125,7 @@ export default function AdminPaymentsPage() {
               >
                 ← Back to Dashboard
               </Button>
-              <h1 className="text-2xl font-bold text-gray-900 text-center item-center">Menu Management</h1>
+              <h1 className="text-2xl font-bold text-gray-900 text-center item-center">User Payments Management</h1>
             </div>
             
         {pendingCount > 0 && (
@@ -154,7 +154,6 @@ export default function AdminPaymentsPage() {
               <th className="py-3 px-4 text-left">Order ID</th>
               <th className="py-3 px-4 text-left">Method</th>
               <th className="py-3 px-4 text-left">Status</th>
-              <th className="py-3 px-4 text-left">Items</th>
               <th className="py-3 px-4 text-left">Subtotal</th>
               <th className="py-3 px-4 text-left">Shipping</th>
               <th className="py-3 px-4 text-left">Phone</th>
@@ -163,17 +162,6 @@ export default function AdminPaymentsPage() {
               <th className="py-3 px-4 text-left">Card Type</th>
               <th className="py-3 px-4 text-left">Card Holder</th>
               <th className="py-3 px-4 text-left">Created At</th>
-              <th className="py-3 px-4 text-left">Status</th>
-              <th className="py-3 px-4 text-left">Items</th>
-              <th className="py-3 px-4 text-left">Subtotal</th>
-              <th className="py-3 px-4 text-left">Shipping</th>
-              <th className="py-3 px-4 text-left">Phone</th>
-              <th className="py-3 px-4 text-left">Location</th>
-              <th className="py-3 px-4 text-left">Card Last 4</th>
-              <th className="py-3 px-4 text-left">Card Type</th>
-              <th className="py-3 px-4 text-left">Card Holder</th>
-              <th className="py-3 px-4 text-left">Created At</th>
-              <th className="py-3 px-4 text-left">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -212,7 +200,6 @@ export default function AdminPaymentsPage() {
                       {payment.payment_status}
                     </span>
                   </td>
-                  <td className="py-2 px-4">{JSON.stringify(payment.items)}</td>
                   <td className="py-2 px-4">${payment.subtotal}</td>
                   <td className="py-2 px-4">${payment.shipping_cost}</td>
                   <td className="py-2 px-4">{payment.customer_phone}</td>

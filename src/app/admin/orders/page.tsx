@@ -135,7 +135,7 @@ export default function AdminOrdersPage() {
               >
                 ← Back to Dashboard
               </Button>
-              <h1 className="text-2xl font-bold text-gray-900 text-center item-center">Menu Management</h1>
+              <h1 className="text-2xl font-bold text-gray-900 text-center item-center">Orders Management</h1>
             </div>
             
         {pendingCount > 0 && (

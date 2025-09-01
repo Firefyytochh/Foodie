@@ -154,7 +154,7 @@ export default function AdminReservationsPage() {
               >
                 ← Back to Dashboard
               </Button>
-              <h1 className="text-2xl font-bold text-gray-900 text-center item-center">Menu Management</h1>
+              <h1 className="text-2xl font-bold text-gray-900 text-center item-center">Reservations Management</h1>
             </div>
             
         {pendingCount > 0 && (
